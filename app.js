@@ -255,7 +255,7 @@ function addTodo() {
 
   // 입력값이 비어있으면 안내 메시지를 띄우고 함수 종료
   if (inputValue === "") {
-    showMessage("할 일을 입력해주세요.");
+    showMessage("할 일을 입력해주세요");
     return;
   }
 
