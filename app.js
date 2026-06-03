@@ -17,7 +17,7 @@ const prevWeekButton = document.getElementById("prevWeekButton");
 const nextWeekButton = document.getElementById("nextWeekButton");
 
 /* ===== 상태를 기억하는 변수들 ===== */
-let currentFilter = "all"; //"all"(전체) | "active"(진행중) | "completed"(완료) 중 하나가 들어간다. 시작할 때는 "전체"가 선택된 상태.
+let currentFilter = "all"; //"all"(전체) / "active"(진행중) / "completed"(완료) 중 하나가 들어간다. 시작할 때는 "전체"가 선택된 상태.
 let selectedDate = new Date(); // 현재 보고 있는 날짜 (처음엔 오늘)
 
 // 요일 이름. getDay()가 0=일 ~ 6=토를 돌려주므로 순서를 맞춰둔다
@@ -25,7 +25,7 @@ const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
 
 /* ===== 날짜 도우미 함수들 ===== */
 
-// Date를 "2026-6-3" 같은 문자열로 (저장·비교용)
+// Date를 "2026-6-3" 같은 문자열로 (저장, 비교용)
 function formatDateKey(date) {
   const year = date.getFullYear();
   const month = date.getMonth() + 1; // getMonth()는 0부터라 +1
@@ -37,8 +37,8 @@ function formatDateKey(date) {
 // (selectedDate를 직접 바꾸지 않도록 복사본으로 계산한다)
 function getMonday(date) {
   const result = new Date(date);
-  const day = result.getDay();            // 0=일, 1=월, ... 6=토
-  const diff = (day === 0) ? 6 : day - 1; // 월요일까지 며칠 빼야 하나 (일요일은 6일 전)
+  const day = result.getDay();
+  const diff = (day === 0) ? 6 : day - 1; // 월요일까지 며칠 빼야 하나
   result.setDate(result.getDate() - diff);
   return result;
 }
@@ -183,7 +183,7 @@ function applyFilter() {
     // 조건 1) 날짜: 선택한 날짜와 같은가 검사
     const matchesDate = itemDate === selectedDateKey;
 
-    // 조건 2) 상태: 현재 탭(전체/진행 중/완료)에 맞는 항목만
+    // 조건 2) 상태: 현재 탭(전체/진행중/완료)에 맞는 항목만
     let matchesStatus = true;
     if (currentFilter === "active") {
       matchesStatus = !isCompleted;
