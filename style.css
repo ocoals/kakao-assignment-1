@@ -45,18 +45,24 @@ body {
   text-align: center;
 }
 
-/* ===== 날짜 이동 영역 ===== */
-.date-nav {
+/* ===== 주간 뷰 ===== */
+.month-label {
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.week-nav {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   margin-bottom: 24px;
 }
 
-.date-button {
-  padding: 6px 12px;
-  font-size: 14px;
-  font-weight: 500;
+.week-button {
+  padding: 8px 12px;
+  font-size: 16px;
   color: var(--main-color);
   background-color: #efeafb;
   border: none;
@@ -65,14 +71,64 @@ body {
   transition: background-color 0.2s;
 }
 
-.date-button:hover {
+.week-button:hover {
   background-color: #e3d9fb;
 }
 
-/* 가운데 날짜 텍스트 */
-.date-display {
+/* 7개 요일 칸을 가로로 균등 배치 */
+.week-strip {
+  flex: 1;
+  display: flex;
+  gap: 4px;
+}
+
+.day-cell {
+  flex: 1; /* 7칸을 같은 너비로 나눠 갖는다 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 0;
+  background-color: transparent;
+  border: 1.5px solid transparent; /* 평소엔 투명, 오늘만 색을 준다 */
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.day-cell:hover {
+  background-color: var(--bg-color);
+}
+
+.day-name {
+  font-size: 12px;
+  color: var(--sub-text-color);
+}
+
+.day-number {
   font-size: 16px;
   font-weight: 600;
+}
+
+.day-count {
+  font-size: 11px;
+  color: var(--sub-text-color);
+}
+
+/* 오늘 날짜: 보라색 테두리로 구분 */
+.day-cell.today {
+  border-color: var(--main-color);
+}
+
+/* 선택된 날짜: 보라색 배경 + 안쪽 글자 흰색 */
+.day-cell.selected {
+  background-color: var(--main-color);
+}
+
+.day-cell.selected .day-name,
+.day-cell.selected .day-number,
+.day-cell.selected .day-count {
+  color: #ffffff;
 }
 
 /* ===== 입력 영역 ===== */

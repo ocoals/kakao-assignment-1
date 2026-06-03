@@ -11,11 +11,12 @@
   <main class="app">
     <h1 class="app-title">Todo List</h1>
 
-    <!-- 날짜 이동 영역 -->
-    <div class="date-nav">
-      <button id="prevDayButton" class="date-button">‹ 이전</button>
-      <span id="dateDisplay" class="date-display"></span>
-      <button id="nextDayButton" class="date-button">다음 ›</button>
+    <!-- 주간 뷰: 연·월 표시 + (이전주) 월~일 7칸 (다음주) -->
+    <p id="monthLabel" class="month-label"></p>
+    <div class="week-nav">
+      <button id="prevWeekButton" class="week-button">‹</button>
+      <div id="weekStrip" class="week-strip"></div>
+      <button id="nextWeekButton" class="week-button">›</button>
     </div>
 
     <!-- Todo 입력 영역 -->

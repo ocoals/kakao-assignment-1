@@ -10,46 +10,112 @@ const filterAllButton = document.getElementById("filterAll");
 const filterActiveButton = document.getElementById("filterActive");
 const filterCompletedButton = document.getElementById("filterCompleted");
 
-// 날짜 이동 관련 요소들 가져오기
-const dateDisplayElement = document.getElementById("dateDisplay");
-const prevDayButton = document.getElementById("prevDayButton");
-const nextDayButton = document.getElementById("nextDayButton");
+// 주간 뷰 관련 요소들
+const monthLabelElement = document.getElementById("monthLabel");
+const weekStripElement = document.getElementById("weekStrip");
+const prevWeekButton = document.getElementById("prevWeekButton");
+const nextWeekButton = document.getElementById("nextWeekButton");
 
 /* ===== 상태를 기억하는 변수들 ===== */
 let currentFilter = "all"; //"all"(전체) | "active"(진행중) | "completed"(완료) 중 하나가 들어간다. 시작할 때는 "전체"가 선택된 상태.
 let selectedDate = new Date(); // 현재 보고 있는 날짜 (처음엔 오늘)
 
-/* ===== 날짜 관련 도우미 함수들 ===== */
+// 요일 이름. getDay()가 0=일 ~ 6=토를 돌려주므로 순서를 맞춰둔다
+const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
 
-// Date를 "2026-6-3" 같은 문자열로 만든다. (항목에 저장하고, 같은 날인지 비교하는 용도)
+/* ===== 날짜 도우미 함수들 ===== */
+
+// Date를 "2026-6-3" 같은 문자열로 (저장·비교용)
 function formatDateKey(date) {
   const year = date.getFullYear();
-  // getMonth()는 0부터 시작(1월=0)하므로 +1
-  const month = date.getMonth() + 1;
+  const month = date.getMonth() + 1; // getMonth()는 0부터라 +1
   const day = date.getDate();
   return year + "-" + month + "-" + day;
 }
 
-function formatDateDisplay(date) {
-  const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
-  const year = date.getFullYear();
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  const dayName = dayNames[date.getDay()]; // getDay(): 0=일요일 ~ 6=토요일
-  return year + "년 " + month + "월 " + day + "일 (" + dayName + ")";
+// 주어진 날짜가 속한 '그 주의 월요일' Date를 구한다
+// (selectedDate를 직접 바꾸지 않도록 복사본으로 계산한다)
+function getMonday(date) {
+  const result = new Date(date);
+  const day = result.getDay();            // 0=일, 1=월, ... 6=토
+  const diff = (day === 0) ? 6 : day - 1; // 월요일까지 며칠 빼야 하나 (일요일은 6일 전)
+  result.setDate(result.getDate() - diff);
+  return result;
 }
 
-// 화면 상단의 날짜 표시를 현재 selectedDate 기준으로 갱신
-function updateDateDisplay() {
-  dateDisplayElement.textContent = formatDateDisplay(selectedDate);
+// 특정 날짜 키에 해당하는 Todo가 몇 개인지 센다
+function countTodosForDate(dateKey) {
+  const allItems = todoListElement.querySelectorAll(".todo-item");
+  let count = 0;
+  for (let i = 0; i < allItems.length; i++) {
+    if (allItems[i].dataset.date === dateKey) {
+      count++;
+    }
+  }
+  return count;
 }
 
-// 날짜를 dayOffset일 만큼 이동한다 (-1: 이전 날, +1: 다음 날)
-function changeDate(dayOffset) {
-  // 현재 '일'에 이동값을 더해 setDate에 넣으면 월/년 경계도 자동으로 처리된다
-  selectedDate.setDate(selectedDate.getDate() + dayOffset);
-  updateDateDisplay(); // 바뀐 날짜를 화면에 표시
-  applyFilter();       // 그 날짜에 맞는 Todo만 보이도록 갱신
+/* ===== 주간 뷰 그리기 =====
+   selectedDate가 속한 주(월~일)를 칸 7개로 다시 그린다. */
+function renderWeek() {
+  weekStripElement.innerHTML = ""; // 기존 칸 비우기
+
+  const monday = getMonday(selectedDate);          // 이번 주 월요일
+  const selectedKey = formatDateKey(selectedDate); // 지금 선택된 날짜
+  const todayKey = formatDateKey(new Date());      // 오늘 날짜
+
+  // 상단에 "연도 월" 표시 (선택한 날짜 기준)
+  monthLabelElement.textContent =
+    selectedDate.getFullYear() + "년 " + (selectedDate.getMonth() + 1) + "월";
+
+  // 월요일부터 7일치 칸을 만든다
+  for (let i = 0; i < 7; i++) {
+    // 월요일을 복사해 i일 더한 날짜
+    const cellDate = new Date(monday);
+    cellDate.setDate(monday.getDate() + i);
+    const cellKey = formatDateKey(cellDate);
+
+    // 칸(버튼) 만들기
+    const dayCell = document.createElement("button");
+    dayCell.className = "day-cell";
+    if (cellKey === selectedKey) dayCell.classList.add("selected"); // 선택된 날 강조
+    if (cellKey === todayKey) dayCell.classList.add("today");       // 오늘 강조
+
+    // 요일 이름
+    const dayName = document.createElement("span");
+    dayName.className = "day-name";
+    dayName.textContent = dayNames[cellDate.getDay()];
+
+    // 날짜 숫자
+    const dayNumber = document.createElement("span");
+    dayNumber.className = "day-number";
+    dayNumber.textContent = cellDate.getDate();
+
+    // 그 날짜의 Todo 개수
+    const dayCount = document.createElement("span");
+    dayCount.className = "day-count";
+    dayCount.textContent = countTodosForDate(cellKey) + "개";
+
+    dayCell.appendChild(dayName);
+    dayCell.appendChild(dayNumber);
+    dayCell.appendChild(dayCount);
+
+    // 칸을 클릭하면 그 날짜를 선택한다
+    dayCell.addEventListener("click", function () {
+      selectedDate = new Date(cellDate); // 선택 날짜 변경 (복사해서 담기)
+      renderWeek();                      // 강조·개수 다시 그리기
+      applyFilter();                     // 그 날짜 Todo만 보이기
+    });
+
+    weekStripElement.appendChild(dayCell);
+  }
+}
+
+// 주를 weekOffset만큼 이동한다 (-1: 이전 주, +1: 다음 주)
+function changeWeek(weekOffset) {
+  selectedDate.setDate(selectedDate.getDate() + weekOffset * 7);
+  renderWeek();
+  applyFilter();
 }
 
 /* ===== 안내 메시지 표시 함수 ===== */
@@ -234,6 +300,8 @@ function createTodoElement(text, completed, date) {
   deleteButton.textContent = "삭제";
   deleteButton.addEventListener("click", function () {
     listItem.remove();
+    applyFilter(); // 삭제했으니 화면 갱신
+    renderWeek(); // 주간 뷰의 개수 갱신
     saveTodos(); // 삭제했으니 저장
   });
 
@@ -267,6 +335,7 @@ function addTodo() {
 
   todoInput.value = ""; // 입력창 비우기
   applyFilter(); // 새 항목이 현재 필터에 맞는지 확인해 보이기/숨기기
+  renderWeek(); // 주간 뷰의 개수 표시를 업데이트한다
   saveTodos(); // 변경된 목록을 저장한다
 }
 
@@ -293,15 +362,15 @@ filterCompletedButton.addEventListener("click", function () {
 });
 
 // 날짜 이동 버튼 클릭
-prevDayButton.addEventListener("click", function () {
-  changeDate(-1); // 하루 전으로
+prevWeekButton.addEventListener("click", function () {
+  changeWeek(-1); // 이전 주
 });
-nextDayButton.addEventListener("click", function () {
-  changeDate(1); // 하루 후로
+nextWeekButton.addEventListener("click", function () {
+  changeWeek(1); // 다음 주
 });
 
 /* ===== 시작할 때 실행 =====
    1) 저장된 Todo 불러와 복원 → 2) 오늘 날짜 표시 → 3) 현재 날짜/필터에 맞게 정리 */
 loadTodos();
-updateDateDisplay();
+renderWeek();
 applyFilter();
