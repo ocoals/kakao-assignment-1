@@ -3,6 +3,7 @@ const todoInput = document.getElementById("todoInput");
 const addButton = document.getElementById("addButton");
 const messageElement = document.getElementById("message");
 const todoListElement = document.getElementById("todoList");
+const emptyMessageElement = document.getElementById("emptyMessage");
 
 // 필터 탭 버튼들 가져오기
 const filterAllButton = document.getElementById("filterAll");
@@ -104,6 +105,7 @@ function applyFilter() {
   // 목록 안의 모든 todo 항목(li)을 한꺼번에 가져온다
   const allItems = todoListElement.querySelectorAll(".todo-item");
   const selectedDateKey = formatDateKey(selectedDate); // 지금 보고 있는 날자 키
+  let itemCounter = 0;
 
   // 항목을 하나씩 돌면서 보일지 숨길지 결정
   for (let i = 0; i < allItems.length; i++) {
@@ -129,9 +131,23 @@ function applyFilter() {
     // shouldShow 값에 따라 화면에 반영 (보일 땐 flex, 숨길 땐 none)
     if (shouldShow) {
       item.style.display = "flex";
+      itemCounter++; // 보이는 항목이 하나 늘었으니 카운터도 1 증가
     } else {
       item.style.display = "none";
     }
+  }
+
+  if (itemCounter === 0) {
+    emptyMessageElement.style.display = "block";
+    if (currentFilter === "active") {
+      emptyMessageElement.textContent = "진행중 0개";
+    } else if (currentFilter === "completed") {
+      emptyMessageElement.textContent = "완료 0개";
+    } else {
+      emptyMessageElement.textContent = "할 일 0개";
+    }
+  } else {
+    emptyMessageElement.style.display = "none";
   }
 }
 

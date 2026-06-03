@@ -24,6 +24,10 @@ body {
   padding: 60px 20px;
 }
 
+.empty-message {
+  text-align: center;
+}
+
 /* ===== 앱 컨테이너 ===== */
 .app {
   width: 100%;
