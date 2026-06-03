@@ -1,0 +1,165 @@
+/* ===== 기본 리셋 및 공통 설정 ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  /* 메인 컬러 및 보조 색상 변수로 관리 */
+  --main-color: #672be0;
+  --main-color-hover: #5722c4;
+  --bg-color: #f5f4fa;
+  --text-color: #2c2c34;
+  --sub-text-color: #9a98a8;
+  --border-color: #e5e3ef;
+}
+
+body {
+  font-family: "Segoe UI", "Apple SD Gothic Neo", sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  display: flex;
+  justify-content: center;
+  padding: 60px 20px;
+}
+
+/* ===== 앱 컨테이너 ===== */
+.app {
+  width: 100%;
+  max-width: 480px;
+  background-color: #ffffff;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 8px 30px rgba(103, 43, 224, 0.08);
+}
+
+.app-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+/* ===== 입력 영역 ===== */
+.input-area {
+  display: flex;
+  gap: 8px;
+}
+
+.todo-input {
+  flex: 1;
+  padding: 12px 14px;
+  font-size: 15px;
+  border: 1.5px solid var(--border-color);
+  border-radius: 10px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.todo-input:focus {
+  border-color: var(--main-color);
+}
+
+.add-button {
+  padding: 0 20px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+  background-color: var(--main-color);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.add-button:hover {
+  background-color: var(--main-color-hover);
+}
+
+/* ===== 안내 메시지 ===== */
+.message {
+  min-height: 18px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--main-color);
+}
+
+/* ===== Todo 목록 ===== */
+.todo-list {
+  list-style: none;
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.todo-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  border: 1.5px solid var(--border-color);
+  border-radius: 10px;
+}
+
+/* Todo 텍스트 */
+.todo-text {
+  flex: 1;
+  font-size: 15px;
+  word-break: break-all;
+}
+
+/* 완료된 Todo에 적용되는 취소선 스타일 */
+.todo-item.completed .todo-text {
+  text-decoration: line-through;
+  color: var(--sub-text-color);
+}
+
+/* 수정 모드일 때 사용하는 입력창 */
+.edit-input {
+  flex: 1;
+  padding: 8px 10px;
+  font-size: 15px;
+  border: 1.5px solid var(--main-color);
+  border-radius: 8px;
+  outline: none;
+}
+
+/* ===== 항목별 버튼 ===== */
+.button-group {
+  display: flex;
+  gap: 6px;
+}
+
+.item-button {
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.item-button:hover {
+  opacity: 0.8;
+}
+
+/* 수정 버튼 */
+.edit-button {
+  background-color: #efeafb;
+  color: var(--main-color);
+}
+
+/* 완료 버튼 */
+.complete-button {
+  background-color: var(--main-color);
+  color: #ffffff;
+}
+
+/* 삭제 버튼 */
+.delete-button {
+  background-color: #fdeaea;
+  color: #e04b4b;
+}

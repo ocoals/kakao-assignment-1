@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Todo List</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- 앱 전체를 감싸는 컨테이너 -->
+  <main class="app">
+    <h1 class="app-title">Todo List</h1>
+
+    <!-- Todo 입력 영역 -->
+    <div class="input-area">
+      <input
+        type="text"
+        id="todoInput"
+        class="todo-input"
+        placeholder="할 일을 입력하세요"
+        autocomplete="off"
+      />
+      <button id="addButton" class="add-button">추가</button>
+    </div>
+
+    <!-- 안내 메시지(빈 입력 등)를 표시하는 영역 -->
+    <p id="message" class="message"></p>
+
+    <!-- 생성된 Todo가 표시되는 목록 -->
+    <ul id="todoList" class="todo-list"></ul>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
