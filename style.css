@@ -41,6 +41,36 @@ body {
   text-align: center;
 }
 
+/* ===== 날짜 이동 영역 ===== */
+.date-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.date-button {
+  padding: 6px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--main-color);
+  background-color: #efeafb;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.date-button:hover {
+  background-color: #e3d9fb;
+}
+
+/* 가운데 날짜 텍스트 */
+.date-display {
+  font-size: 16px;
+  font-weight: 600;
+}
+
 /* ===== 입력 영역 ===== */
 .input-area {
   display: flex;

@@ -10,10 +10,49 @@ const filterAllButton = document.getElementById("filterAll");
 const filterActiveButton = document.getElementById("filterActive");
 const filterCompletedButton = document.getElementById("filterCompleted");
 
-/* ===== 현재 선택된 필터를 기억하는 변수 =====
-   "all"(전체) | "active"(진행중) | "completed"(완료) 중 하나가 들어간다.
-   시작할 때는 "전체"가 선택된 상태. */
-let currentFilter = "all";
+// 날짜 이동 관련 요소들 가져오기
+const dateDisplayElement = document.getElementById("dateDisplay");
+const prevDayButton = document.getElementById("prevDayButton");
+const nextDayButton = document.getElementById("nextDayButton");
+
+/* ===== 상태를 기억하는 변수들 ===== */
+let currentFilter = "all"; //"all"(전체) | "active"(진행중) | "completed"(완료) 중 하나가 들어간다. 시작할 때는 "전체"가 선택된 상태.
+let selectedDate = new Date(); // 현재 보고 있는 날짜 (처음엔 오늘)
+
+/* ===== 날짜 관련 도우미 함수들 ===== */
+
+// Date를 "2026-6-3" 같은 문자열로 만든다. (항목에 저장하고, 같은 날인지 비교하는 용도)
+// 화면에 보여주는 값이 아니라 '비교'만 할 거라서, 앞에 0을 채우지 않아도 문제없다.
+function formatDateKey(date) {
+  const year = date.getFullYear();
+  // getMonth()는 0부터 시작(1월=0)하므로 +1
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  return year + "-" + month + "-" + day;
+}
+
+// Date 객체를 "2026년 6월 3일 (화)" 형태의 보기 좋은 문자열로 변환 (화면 표시용)
+function formatDateDisplay(date) {
+  const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const dayName = dayNames[date.getDay()]; // getDay(): 0=일요일 ~ 6=토요일
+  return year + "년 " + month + "월 " + day + "일 (" + dayName + ")";
+}
+
+// 화면 상단의 날짜 표시를 현재 selectedDate 기준으로 갱신
+function updateDateDisplay() {
+  dateDisplayElement.textContent = formatDateDisplay(selectedDate);
+}
+
+// 날짜를 dayOffset일 만큼 이동한다 (-1: 이전 날, +1: 다음 날)
+function changeDate(dayOffset) {
+  // 현재 '일'에 이동값을 더해 setDate에 넣으면 월/년 경계도 자동으로 처리된다
+  selectedDate.setDate(selectedDate.getDate() + dayOffset);
+  updateDateDisplay(); // 바뀐 날짜를 화면에 표시
+  applyFilter();       // 그 날짜에 맞는 Todo만 보이도록 갱신
+}
 
 /* ===== 안내 메시지 표시 함수 =====
    빈 입력 등 사용자에게 보여줄 글을 message 영역에 출력한다. */
@@ -21,29 +60,34 @@ function showMessage(text) {
   messageElement.textContent = text;
 }
 
-/* ===== 현재 필터에 맞게 항목을 보이거나 숨기는 함수 ===== */
+/* ===== 날짜 + 상태 필터에 맞는 항목만 보이는 함수 ===== */
 function applyFilter() {
   // 목록 안의 모든 todo 항목(li)을 한꺼번에 가져온다
   const allItems = todoListElement.querySelectorAll(".todo-item");
+  const selectedDateKey = formatDateKey(selectedDate); // 지금 보고 있는 날자 키
 
   // 항목을 하나씩 돌면서 보일지 숨길지 결정
   for (let i = 0; i < allItems.length; i++) {
     const item = allItems[i];
     // 이 항목이 완료 상태인지 확인 (completed 클래스가 있으면 완료)
     const isCompleted = item.classList.contains("completed");
+    const itemDate = item.dataset.date; // 이 항목에 저장해 둔 날짜
 
-    let shouldShow = true; // 기본값은 '보이기'
+    // 조건 1) 날짜: 선택한 날짜와 같은가?
+    const matchesDate = itemDate === selectedDateKey;
 
+    // 조건 2) 상태: 현재 탭(전체/진행 중/완료)에 맞는 항목만
+    let matchesStatus = true;
     if (currentFilter === "active") {
-      // 진행 중 탭: 완료되지 '않은' 것만 보이기
-      shouldShow = !isCompleted;
+      matchesStatus = !isCompleted;
     } else if (currentFilter === "completed") {
-      // 완료 탭: 완료된 것만 보이기
-      shouldShow = isCompleted;
+      matchesStatus = isCompleted;
     }
-    // currentFilter가 "all"이면 위 조건에 안 걸리므로 shouldShow는 true 유지
 
-    // 결정한 대로 화면에 반영 (보일 땐 flex, 숨길 땐 none)
+    // 두 조건을 모두 만족하면 보여준다 → 최종 결정을 shouldShow에 담는다
+    const shouldShow = matchesDate && matchesStatus;
+
+    // shouldShow 값에 따라 화면에 반영 (보일 땐 flex, 숨길 땐 none)
     if (shouldShow) {
       item.style.display = "flex";
     } else {
@@ -92,6 +136,8 @@ function addTodo() {
   // 1) 항목 전체를 담을 li 요소 만들기
   const listItem = document.createElement("li");
   listItem.className = "todo-item";
+  // 현재 선택된 날짜를 이 항목에 저장해 둔다 (나중에 날짜별로 거를 때 사용)
+  listItem.dataset.date = formatDateKey(selectedDate);
 
   // 2) 할 일 텍스트를 담을 span 만들기
   const todoText = document.createElement("span");
@@ -184,3 +230,14 @@ filterActiveButton.addEventListener("click", function () {
 filterCompletedButton.addEventListener("click", function () {
   setFilter("completed");
 });
+
+// 날짜 이동 버튼 클릭
+prevDayButton.addEventListener("click", function () {
+  changeDate(-1); // 하루 전으로
+});
+nextDayButton.addEventListener("click", function () {
+  changeDate(1); // 하루 후로
+});
+
+/* ===== 시작할 때 오늘 날짜를 화면에 표시 ===== */
+updateDateDisplay();
