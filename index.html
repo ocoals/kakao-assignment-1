@@ -20,7 +20,7 @@
     </div>
 
     <!-- Todo 입력 영역 -->
-    <div class="input-area">
+    <form id="todoForm" class="input-area">
       <input
         type="text"
         id="todoInput"
@@ -28,8 +28,8 @@
         placeholder="할 일을 입력하세요"
         autocomplete="off"
       />
-      <button id="addButton" class="add-button">추가</button>
-    </div>
+      <button type="submit" id="addButton" class="add-button">추가</button>
+    </form>
 
     <!-- 안내 메시지(빈 입력 등)를 표시하는 영역 -->
     <p id="message" class="message"></p>

@@ -1,6 +1,7 @@
 /* ===== DOM 요소 ===== */
+
 const todoInput = document.getElementById("todoInput");
-const addButton = document.getElementById("addButton");
+const todoForm = document.getElementById("todoForm");
 const messageElement = document.getElementById("message");
 const todoListElement = document.getElementById("todoList");
 const emptyMessageElement = document.getElementById("emptyMessage");
@@ -280,12 +281,10 @@ const addTodo = () => {
 };
 
 /* ===== 이벤트 등록 ===== */
-addButton.addEventListener("click", addTodo);
 
-todoInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter" && !event.isComposing) {
-    addTodo();
-  }
+todoForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  addTodo();
 });
 
 filterAllButton.addEventListener("click", () => {
