@@ -41,13 +41,7 @@ const getMonday = (date) => {
 
 const countTodosForDate = (dateKey) => {
   const allItems = todoListElement.querySelectorAll(".todo-item");
-  let count = 0;
-  for (let i = 0; i < allItems.length; i++) {
-    if (allItems[i].dataset.date === dateKey) {
-      count++;
-    }
-  }
-  return count;
+  return Array.from(allItems).filter((item) => item.dataset.date === dateKey).length;
 };
 
 /* ===== 주간 뷰 ===== */
@@ -117,15 +111,11 @@ const updateCompleteLabel = (button, isCompleted) => {
 
 const saveTodos = () => {
   const allItems = todoListElement.querySelectorAll(".todo-item");
-  const todos = [];
-
-  for (let i = 0; i < allItems.length; i++) {
-    const item = allItems[i];
-    const text = item.querySelector(".todo-text").textContent;
-    const completed = item.classList.contains("completed");
-    const date = item.dataset.date;
-    todos.push({ text, completed, date });
-  }
+  const todos = Array.from(allItems).map((item) => ({
+    text: item.querySelector(".todo-text").textContent,
+    completed: item.classList.contains("completed"),
+    date: item.dataset.date,
+  }));
 
   localStorage.setItem("todos", JSON.stringify(todos));
 };
@@ -137,10 +127,9 @@ const loadTodos = () => {
   }
 
   const todos = JSON.parse(saved);
-  for (let i = 0; i < todos.length; i++) {
-    const todo = todos[i];
+  todos.forEach((todo) => {
     createTodoElement(todo.text, todo.completed, todo.date);
-  }
+  });
 };
 
 /* ===== 필터 ===== */
@@ -150,8 +139,7 @@ const applyFilter = () => {
   const selectedDateKey = formatDateKey(selectedDate);
   let visibleCount = 0;
 
-  for (let i = 0; i < allItems.length; i++) {
-    const item = allItems[i];
+  Array.from(allItems).forEach((item) => {
     const isCompleted = item.classList.contains("completed");
     const matchesDate = item.dataset.date === selectedDateKey;
 
@@ -169,7 +157,7 @@ const applyFilter = () => {
     } else {
       item.style.display = "none";
     }
-  }
+  });
 
   if (visibleCount === 0) {
     emptyMessageElement.style.display = "block";
