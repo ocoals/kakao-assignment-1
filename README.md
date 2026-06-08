@@ -1,1 +1,1 @@
-# 2차 과제 - React로 Todo 앱 만들기
+# 1차 과제 - VanillaJS로 Todo 앱 만들기
