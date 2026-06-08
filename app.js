@@ -109,6 +109,10 @@ const showMessage = (text) => {
   messageElement.textContent = text;
 };
 
+const updateCompleteLabel = (button, isCompleted) => {
+  button.textContent = isCompleted ? "취소" : "완료";
+};
+
 /* ===== 저장 / 불러오기 (localStorage) ===== */
 
 const saveTodos = () => {
@@ -229,18 +233,10 @@ const createTodoElement = (text, completed, date) => {
 
   const completeButton = document.createElement("button");
   completeButton.className = "item-button complete-button";
-  if (completed) {
-    completeButton.textContent = "취소";
-  } else {
-    completeButton.textContent = "완료";
-  }
+  updateCompleteLabel(completeButton, completed);
   completeButton.addEventListener("click", () => {
     listItem.classList.toggle("completed");
-    if (listItem.classList.contains("completed")) {
-      completeButton.textContent = "취소";
-    } else {
-      completeButton.textContent = "완료";
-    }
+    updateCompleteLabel(completeButton, listItem.classList.contains("completed"));
     applyFilter();
     saveTodos();
   });
