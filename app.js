@@ -185,20 +185,18 @@ const applyFilter = () => {
   }
 };
 
+const filters = [
+  { button: filterAllButton, name: "all" },
+  { button: filterActiveButton, name: "active" },
+  { button: filterCompletedButton, name: "completed" },
+];
+
 const setFilter = (filterName) => {
   currentFilter = filterName;
 
-  filterAllButton.classList.remove("active");
-  filterActiveButton.classList.remove("active");
-  filterCompletedButton.classList.remove("active");
-
-  if (filterName === "all") {
-    filterAllButton.classList.add("active");
-  } else if (filterName === "active") {
-    filterActiveButton.classList.add("active");
-  } else if (filterName === "completed") {
-    filterCompletedButton.classList.add("active");
-  }
+  filters.forEach((filter) => {
+    filter.button.classList.toggle("active", filter.name === filterName);
+  });
 
   applyFilter();
 };
@@ -283,14 +281,8 @@ todoForm.addEventListener("submit", (event) => {
   addTodo();
 });
 
-filterAllButton.addEventListener("click", () => {
-  setFilter("all");
-});
-filterActiveButton.addEventListener("click", () => {
-  setFilter("active");
-});
-filterCompletedButton.addEventListener("click", () => {
-  setFilter("completed");
+filters.forEach((filter) => {
+  filter.button.addEventListener("click", () => setFilter(filter.name));
 });
 
 prevWeekButton.addEventListener("click", () => {
