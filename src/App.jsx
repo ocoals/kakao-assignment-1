@@ -1,9 +1,11 @@
 import { useState } from "react";
 import TodoForm from "./components/TodoForm";
+import FilterTabs from "./components/FilterTabs";
 import TodoList from "./components/TodoList";
 
 function App() {
   const [todos, setTodos] = useState([]);
+  const [currentFilter, setCurrentFilter] = useState("all");
 
   const addTodo = (text) => {
     const newTodo = { id: Date.now(), text, completed: false };
@@ -30,12 +32,19 @@ function App() {
     setTodos(todos.filter((todo) => todo.id !== id));
   };
 
+  const visibleTodos = todos.filter((todo) => {
+    if (currentFilter === "active") return !todo.completed;
+    if (currentFilter === "completed") return todo.completed;
+    return true;
+  });
+
   return (
     <div className="max-w-md mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">할 일 목록</h1>
       <TodoForm onAdd={addTodo} />
+      <FilterTabs currentFilter={currentFilter} onChange={setCurrentFilter} />
       <TodoList
-        todos={todos}
+        todos={visibleTodos}
         onComplete={completeTodo}
         onEdit={editTodo}
         onDelete={deleteTodo}
