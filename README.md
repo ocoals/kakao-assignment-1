@@ -43,17 +43,20 @@ npm run preview  # 빌드 결과 미리보기
 
 ```
 src/
-├── App.jsx              # 화면 조립 + 필터/선택 날짜 상태
-├── main.jsx            # 진입점
-├── index.css           # Tailwind + 색/폰트 토큰
+├── App.jsx                 # 훅 3개 조립 + 화면 렌더
+├── main.jsx                # 진입점
+├── index.css               # Tailwind + 색/폰트 토큰
 ├── hooks/
-│   └── useTodos.js     # 할 일 상태·CRUD·localStorage 커스텀 훅
+│   ├── useTodos.js         # 할 일 상태·CRUD·localStorage
+│   ├── useSelectedDate.js  # 선택 날짜 상태·localStorage
+│   └── useFilteredTodos.js # 필터 상태 + 보일 목록 계산
 ├── components/
-│   ├── TodoForm.jsx    # 입력/추가
-│   ├── FilterTabs.jsx  # 전체/진행중/완료 탭
-│   ├── WeekStrip.jsx   # 주간 스트립
-│   ├── TodoList.jsx    # 목록 + 빈 상태
-│   └── TodoItem.jsx    # 개별 항목(수정/완료/삭제)
+│   ├── index.js            # 배럴(컴포넌트 모아 내보내기)
+│   ├── TodoForm.jsx        # 입력/추가
+│   ├── FilterTabs.jsx      # 전체/진행중/완료 탭
+│   ├── WeekStrip.jsx       # 주간 스트립
+│   ├── TodoList.jsx        # 목록 + 빈 상태
+│   └── TodoItem.jsx        # 개별 항목(수정/완료/삭제)
 └── utils/
-    └── date.js         # 날짜 헬퍼(로컬 시간 기준 YYYY-MM-DD)
+    └── date.js             # 날짜 헬퍼(로컬 시간 기준 YYYY-MM-DD)
 ```
