@@ -1,11 +1,9 @@
-import TodoForm from "./components/TodoForm";
-import FilterTabs from "./components/FilterTabs";
-import TodoList from "./components/TodoList";
-import WeekStrip from "./components/WeekStrip";
+
 import { useTodos } from "./hooks/useTodos";
 import { useSelectedDate } from "./hooks/useSelectedDate";
 import { useFilteredTodos } from "./hooks/useFilteredTodos";
 import { formatDateKey } from "./utils/date";
+import { FilterTabs, TodoForm, TodoList, WeekStrip } from "./components";
 
 function App() {
   const { todos, addTodo, completeTodo, editTodo, deleteTodo } = useTodos();
