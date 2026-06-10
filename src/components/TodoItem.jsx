@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+const buttonClass = "rounded-lg px-2.5 py-1.5 text-[13px] font-medium hover:opacity-80";
+
 function TodoItem({ todo, onComplete, onEdit, onDelete }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(todo.text);
@@ -18,41 +20,47 @@ function TodoItem({ todo, onComplete, onEdit, onDelete }) {
 
   if (isEditing) {
     return (
-      <li className="flex items-center gap-2 rounded border px-3 py-2">
+      <li className="flex items-center gap-2.5 rounded-[10px] border-[1.5px] border-line p-3.5">
         <input
           type="text"
           value={editText}
           onChange={(event) => setEditText(event.target.value)}
           onKeyDown={(event) => event.key === "Enter" && handleSave()}
-          className="flex-1 rounded border px-2 py-1"
+          className="flex-1 rounded-lg border-[1.5px] border-line px-2.5 py-1.5 text-[15px] outline-none focus:border-brand"
           autoFocus
         />
-        <button onClick={handleSave} className="text-blue-500">
-          저장
-        </button>
-        <button onClick={handleCancel} className="text-gray-500">
-          취소
-        </button>
+        <div className="flex gap-1.5">
+          <button onClick={handleSave} className={`${buttonClass} bg-brand text-white`}>
+            저장
+          </button>
+          <button onClick={handleCancel} className={`${buttonClass} bg-brand-soft text-brand`}>
+            취소
+          </button>
+        </div>
       </li>
     );
   }
 
   return (
-    <li className="flex items-center gap-2 rounded border px-3 py-2">
+    <li className="flex items-center gap-2.5 rounded-[10px] border-[1.5px] border-line p-3.5">
       <span
-        className={`flex-1 ${todo.completed ? "text-gray-400 line-through" : ""}`}
+        className={`flex-1 break-all text-[15px] ${
+          todo.completed ? "text-subtle line-through" : "text-ink"
+        }`}
       >
         {todo.text}
       </span>
-      <button onClick={() => setIsEditing(true)} className="text-gray-600">
-        수정
-      </button>
-      <button onClick={() => onComplete(todo.id)} className="text-green-600">
-        {todo.completed ? "취소" : "완료"}
-      </button>
-      <button onClick={() => onDelete(todo.id)} className="text-red-500">
-        삭제
-      </button>
+      <div className="flex gap-1.5">
+        <button onClick={() => setIsEditing(true)} className={`${buttonClass} bg-brand-soft text-brand`}>
+          수정
+        </button>
+        <button onClick={() => onComplete(todo.id)} className={`${buttonClass} bg-brand text-white`}>
+          {todo.completed ? "취소" : "완료"}
+        </button>
+        <button onClick={() => onDelete(todo.id)} className={`${buttonClass} bg-danger-soft text-danger`}>
+          삭제
+        </button>
+      </div>
     </li>
   );
 }

@@ -17,20 +17,23 @@ function TodoForm({ onAdd }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="mb-4">
+    <form onSubmit={handleSubmit}>
       <div className="flex gap-2">
         <input
           type="text"
           value={text}
           onChange={(event) => setText(event.target.value)}
           placeholder="할 일을 입력하세요"
-          className="flex-1 border rounded px-3 py-2"
+          className="flex-1 rounded-[10px] border-[1.5px] border-line px-3.5 py-3 text-[15px] outline-none focus:border-brand"
         />
-        <button type="submit" className="bg-blue-500 text-white rounded px-4">
+        <button
+          type="submit"
+          className="rounded-[10px] bg-brand px-5 text-[15px] font-semibold text-white hover:bg-brand-hover"
+        >
           추가
         </button>
       </div>
-      {message && <p className="mt-1 text-sm text-red-500">{message}</p>}
+      <p className="mt-2.5 min-h-4.5 text-[13px] text-brand">{message}</p>
     </form>
   );
 }

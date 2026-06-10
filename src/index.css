@@ -1,1 +1,14 @@
 @import "tailwindcss";
+
+@theme {
+  --color-brand: #672be0;
+  --color-brand-hover: #5722c4;
+  --color-brand-soft: #efeafb;
+  --color-surface: #f5f4fa;
+  --color-ink: #2c2c34;
+  --color-subtle: #9a98a8;
+  --color-line: #e5e3ef;
+  --color-danger: #e04b4b;
+  --color-danger-soft: #fdeaea;
+  --font-lobster: "Lobster", cursive;
+}

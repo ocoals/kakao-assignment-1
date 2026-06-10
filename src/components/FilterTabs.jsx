@@ -6,15 +6,15 @@ const filters = [
 
 function FilterTabs({ currentFilter, onChange }) {
   return (
-    <div className="mb-4 flex gap-2">
+    <div className="mt-4 flex gap-1.5">
       {filters.map((filter) => (
         <button
           key={filter.name}
           onClick={() => onChange(filter.name)}
-          className={`rounded px-3 py-1 ${
+          className={`flex-1 rounded-full py-2.5 text-sm font-medium ${
             currentFilter === filter.name
-              ? "bg-blue-500 text-white"
-              : "bg-gray-100 text-gray-600"
+              ? "bg-brand text-white"
+              : "bg-brand-soft text-brand"
           }`}
         >
           {filter.label}

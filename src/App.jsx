@@ -63,21 +63,23 @@ function App() {
   });
 
   return (
-    <div className="max-w-md mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">할 일 목록</h1>
-      <WeekStrip
-        selectedDate={selectedDate}
-        onSelectDate={setSelectedDate}
-        todos={todos}
-      />
-      <TodoForm onAdd={addTodo} />
-      <FilterTabs currentFilter={currentFilter} onChange={setCurrentFilter} />
-      <TodoList
-        todos={visibleTodos}
-        onComplete={completeTodo}
-        onEdit={editTodo}
-        onDelete={deleteTodo}
-      />
+    <div className="flex min-h-screen justify-center bg-surface px-5 py-15">
+      <div className="w-full max-w-120 rounded-3xl bg-white p-8 shadow-[0_20px_50px_rgba(103,43,224,0.12)]">
+        <h1 className="mb-6 text-center font-lobster text-4xl text-brand">Todo List</h1>
+        <WeekStrip
+          selectedDate={selectedDate}
+          onSelectDate={setSelectedDate}
+          todos={todos}
+        />
+        <TodoForm onAdd={addTodo} />
+        <FilterTabs currentFilter={currentFilter} onChange={setCurrentFilter} />
+        <TodoList
+          todos={visibleTodos}
+          onComplete={completeTodo}
+          onEdit={editTodo}
+          onDelete={deleteTodo}
+        />
+      </div>
     </div>
   );
 }
