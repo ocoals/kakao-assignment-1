@@ -6,6 +6,12 @@ export function formatDateKey(date) {
   return `${year}-${month}-${day}`;
 }
 
+export function parseDateKey(key) {
+  // new Date("2026-06-10")은 UTC로 해석돼 날짜가 밀리므로, 숫자로 쪼개 로컬 Date로 만든다.
+  const [year, month, day] = key.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
 export function getMonday(date) {
   const day = date.getDay(); // 0=일, 1=월, ... 6=토
   const diff = day === 0 ? -6 : 1 - day;

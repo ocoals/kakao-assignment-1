@@ -1,14 +1,28 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import TodoForm from "./components/TodoForm";
 import FilterTabs from "./components/FilterTabs";
 import TodoList from "./components/TodoList";
 import WeekStrip from "./components/WeekStrip";
-import { formatDateKey } from "./utils/date";
+import { formatDateKey, parseDateKey } from "./utils/date";
 
 function App() {
-  const [todos, setTodos] = useState([]);
+  const [todos, setTodos] = useState(() => {
+    const saved = localStorage.getItem("todos");
+    return saved ? JSON.parse(saved) : [];
+  });
   const [currentFilter, setCurrentFilter] = useState("all");
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const saved = localStorage.getItem("selectedDate");
+    return saved ? parseDateKey(saved) : new Date();
+  });
+
+  useEffect(() => {
+    localStorage.setItem("todos", JSON.stringify(todos));
+  }, [todos]);
+
+  useEffect(() => {
+    localStorage.setItem("selectedDate", formatDateKey(selectedDate));
+  }, [selectedDate]);
 
   const addTodo = (text) => {
     const newTodo = {
