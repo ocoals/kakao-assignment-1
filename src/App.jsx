@@ -3,13 +3,11 @@ import TodoForm from "./components/TodoForm";
 import FilterTabs from "./components/FilterTabs";
 import TodoList from "./components/TodoList";
 import WeekStrip from "./components/WeekStrip";
+import { useTodos } from "./hooks/useTodos";
 import { formatDateKey, parseDateKey } from "./utils/date";
 
 function App() {
-  const [todos, setTodos] = useState(() => {
-    const saved = localStorage.getItem("todos");
-    return saved ? JSON.parse(saved) : [];
-  });
+  const { todos, addTodo, completeTodo, editTodo, deleteTodo } = useTodos();
   const [currentFilter, setCurrentFilter] = useState("all");
   const [selectedDate, setSelectedDate] = useState(() => {
     const saved = localStorage.getItem("selectedDate");
@@ -17,42 +15,10 @@ function App() {
   });
 
   useEffect(() => {
-    localStorage.setItem("todos", JSON.stringify(todos));
-  }, [todos]);
-
-  useEffect(() => {
     localStorage.setItem("selectedDate", formatDateKey(selectedDate));
   }, [selectedDate]);
 
-  const addTodo = (text) => {
-    const newTodo = {
-      id: Date.now(),
-      text,
-      completed: false,
-      date: formatDateKey(selectedDate),
-    };
-    setTodos([...todos, newTodo]);
-  };
-
-  const completeTodo = (id) => {
-    setTodos(
-      todos.map((todo) =>
-        todo.id === id ? { ...todo, completed: !todo.completed } : todo
-      )
-    );
-  };
-
-  const editTodo = (id, newText) => {
-    setTodos(
-      todos.map((todo) =>
-        todo.id === id ? { ...todo, text: newText } : todo
-      )
-    );
-  };
-
-  const deleteTodo = (id) => {
-    setTodos(todos.filter((todo) => todo.id !== id));
-  };
+  const handleAddTodo = (text) => addTodo(text, formatDateKey(selectedDate));
 
   const selectedKey = formatDateKey(selectedDate);
   const visibleTodos = todos.filter((todo) => {
@@ -71,7 +37,7 @@ function App() {
           onSelectDate={setSelectedDate}
           todos={todos}
         />
-        <TodoForm onAdd={addTodo} />
+        <TodoForm onAdd={handleAddTodo} />
         <FilterTabs currentFilter={currentFilter} onChange={setCurrentFilter} />
         <TodoList
           todos={visibleTodos}
