@@ -1,32 +1,22 @@
-import { useState, useEffect } from "react";
 import TodoForm from "./components/TodoForm";
 import FilterTabs from "./components/FilterTabs";
 import TodoList from "./components/TodoList";
 import WeekStrip from "./components/WeekStrip";
 import { useTodos } from "./hooks/useTodos";
-import { formatDateKey, parseDateKey } from "./utils/date";
+import { useSelectedDate } from "./hooks/useSelectedDate";
+import { useFilteredTodos } from "./hooks/useFilteredTodos";
+import { formatDateKey } from "./utils/date";
 
 function App() {
   const { todos, addTodo, completeTodo, editTodo, deleteTodo } = useTodos();
-  const [currentFilter, setCurrentFilter] = useState("all");
-  const [selectedDate, setSelectedDate] = useState(() => {
-    const saved = localStorage.getItem("selectedDate");
-    return saved ? parseDateKey(saved) : new Date();
-  });
-
-  useEffect(() => {
-    localStorage.setItem("selectedDate", formatDateKey(selectedDate));
-  }, [selectedDate]);
-
-  const handleAddTodo = (text) => addTodo(text, formatDateKey(selectedDate));
-
+  const { selectedDate, setSelectedDate } = useSelectedDate();
   const selectedKey = formatDateKey(selectedDate);
-  const visibleTodos = todos.filter((todo) => {
-    if (todo.date !== selectedKey) return false;
-    if (currentFilter === "active") return !todo.completed;
-    if (currentFilter === "completed") return todo.completed;
-    return true;
-  });
+  const { currentFilter, setCurrentFilter, visibleTodos } = useFilteredTodos(
+    todos,
+    selectedKey
+  );
+
+  const handleAddTodo = (text) => addTodo(text, selectedKey);
 
   return (
     <div className="flex min-h-screen justify-center bg-surface px-5 py-15">
