@@ -8,7 +8,7 @@ import type { Todo } from "../types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-// 목록의 할 일 한 건. 완료/취소 토글과 삭제를 처리한다.
+// 목록의 할 일 한 건. 완료 토글(체크박스)과 삭제를 처리한다.
 export default function TodoItem({ todo }: { todo: Todo }) {
   const router = useRouter();
   const [error, setError] = useState(false);
@@ -45,6 +45,13 @@ export default function TodoItem({ todo }: { todo: Todo }) {
 
   return (
     <li className="flex items-center gap-2.5 rounded-[10px] border-[1.5px] border-line p-3.5">
+      <input
+        type="checkbox"
+        checked={todo.completed}
+        onChange={toggle}
+        aria-label={todo.completed ? "완료 취소" : "완료"}
+        className="h-4 w-4 accent-brand"
+      />
       <span
         className={`flex-1 break-all text-[15px] ${
           todo.completed ? "text-subtle line-through" : "text-ink"
@@ -59,12 +66,6 @@ export default function TodoItem({ todo }: { todo: Todo }) {
       >
         수정
       </Link>
-      <button
-        onClick={toggle}
-        className="rounded-lg bg-brand px-2.5 py-1.5 text-[13px] font-medium text-white hover:opacity-80"
-      >
-        {todo.completed ? "취소" : "완료"}
-      </button>
       <button
         onClick={remove}
         className="rounded-lg bg-danger-soft px-2.5 py-1.5 text-[13px] font-medium text-danger hover:opacity-80"
