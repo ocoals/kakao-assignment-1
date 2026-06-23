@@ -13,7 +13,7 @@ export function useTodos() {
   const addTodo = (text, date) => {
     setTodos((prev) => [
       ...prev,
-      { id: Date.now(), text, completed: false, date },
+      { id: crypto.randomUUID(), text, completed: false, date },
     ]);
   };
 
