@@ -1,65 +1,280 @@
-<!-- Generated: 2026-06-08 | Updated: 2026-06-23 -->
+<!-- Generated: 2026-06-24 | Assignment: 3 (Next.js + FastAPI fullstack) -->
 
 # todo-vanilla
 
 ## Purpose
-주간 캘린더 뷰에서 날짜를 선택하고 그 날짜의 할 일을 추가·수정·완료·삭제하며, 상태(전체/진행중/완료)로 필터링하는 Todo 앱이다. 모든 데이터는 `localStorage`에 저장되어 새로고침 후에도 유지된다.
 
-원래 1차(부트캠프) 과제는 순수 Vanilla JS였고, **2차 과제에서 React(Vite + Tailwind CSS v4)로 마이그레이션을 완료**했다(기능 AC 19개 전부 구현). 현재 앱의 실체는 `src/` 아래 React 코드다. 마이그레이션 요구사항·결정 기록은 `docs/PLAN.md` 참고(원본은 `.omc/specs/deep-interview-react-todo-migration.md`).
+Next.js 16 App Router 프론트엔드와 FastAPI 백엔드로 구성된 할 일 관리 웹 앱. 2차 과제(React/Vite + localStorage)에서 서버 기반 아키텍처로 재설계·재구현. 
+
+**핵심:**
+- 데이터는 FastAPI + SQLite가 관리 (로컬스토리지 제외)
+- 읽기 = Server Component + `actions.ts` (cache: no-store)
+- 쓰기 = Client Component + route.ts 프록시 → FastAPI
+- 서버 기반 필터(`?filter=`) + 검색(`?search=`) + 디바운스
+- 필터·검색 동시 적용 + URL 파라미터 유지
 
 ## Key Files
 
-| File | Description |
-|------|-------------|
-| `index.html` | Vite 진입 HTML. `#root` div + `/src/main.jsx`를 로드한다. |
-| `src/main.jsx` | `createRoot`로 `App`을 렌더(StrictMode). |
-| `src/App.jsx` | **조립 컴포넌트.** 커스텀 훅 3개(`useTodos`/`useSelectedDate`/`useFilteredTodos`)를 조합해 자식에 props로 내려준다. `useState`/`useEffect`를 직접 두지 않는다. |
-| `src/hooks/useTodos.js` | **커스텀 훅.** `todos` 상태 + CRUD 핸들러(`addTodo`/`completeTodo`/`editTodo`/`deleteTodo`) + `localStorage` 자동 저장(`useEffect`)을 묶어 반환. |
-| `src/hooks/useSelectedDate.js` | **커스텀 훅.** 선택 날짜 상태 + 함수형 초기화/저장(`localStorage`). `{ selectedDate, setSelectedDate }` 반환. |
-| `src/hooks/useFilteredTodos.js` | **커스텀 훅.** `currentFilter` 상태 + 날짜·상태로 거른 `visibleTodos` 계산. `(todos, dateKey)`를 받아 `{ currentFilter, setCurrentFilter, visibleTodos }` 반환. |
-| `src/components/index.js` | **배럴 파일.** 컴포넌트를 모아 다시 내보내 `import { ... } from "./components"`로 쓰게 한다. 내부 전용 `TodoItem`은 제외. |
-| `src/components/TodoForm.jsx` | 입력/추가. 빈 입력 시 `message` 상태로 안내 문구 표시. |
-| `src/components/FilterTabs.jsx` | 전체/진행중/완료 탭. `filters` 배열을 map. |
-| `src/components/WeekStrip.jsx` | 주간 스트립(월~일 7칸), 이전/다음 주, 날짜별 개수, 오늘·선택 강조. |
-| `src/components/TodoList.jsx` | 목록 렌더 + 빈 상태 메시지(early return). |
-| `src/components/TodoItem.jsx` | 개별 항목. `isEditing` 상태로 인라인 수정(저장/취소/Enter), 완료 토글·삭제. |
-| `src/utils/date.js` | 날짜 헬퍼: `formatDateKey`/`parseDateKey`/`getMonday`/`getWeekDates`/`addWeeks`. |
-| `src/index.css` | `@import "tailwindcss";` + `@theme`에 보라 테마 색 토큰 정의. |
-| `vite.config.js` | `@vitejs/plugin-react` + `@tailwindcss/vite` 플러그인. |
-| `.gitignore` | `.omc/`를 무시. `AGENTS.md`는 추적·커밋(공유 목적). |
+| File | Purpose |
+|------|---------|
+| **backend/main.py** | FastAPI 앱. CRUD 엔드포인트 4개(GET/POST/PUT/DELETE /todos), 필터/검색 로직, CORS 미들웨어. |
+| **backend/database.py** | SQLAlchemy 엔진/세션/Base. `.env.local`에서 DATABASE_URL 읽음. |
+| **backend/models.py** | SQLAlchemy 모델 `Todo(id: int PK, text: str, completed: bool)`. |
+| **backend/schemas.py** | Pydantic v2 스키마. `TodoCreate`(text 공백 검증), `TodoUpdate`(Optional 필드), `TodoRead`. |
+| **frontend/app/todos/page.tsx** | 할 일 목록 Server Component. searchParams(filter/search) await → getTodos() → 필터 결과 렌더. |
+| **frontend/app/todos/actions.ts** | 읽기 헬퍼. `getTodos(filter, search)`: BACKEND_URL로 FastAPI 직접 호출, cache: no-store. "use server" 붙이지 않음 (Server Action 아님). |
+| **frontend/app/api/todos/route.ts** | POST 프록시. 클라 → 이 핸들러 → FastAPI POST. 성공 후 revalidatePath("/todos"). |
+| **frontend/app/api/todos/[id]/route.ts** | PUT/DELETE 프록시. 동적 세그먼트 [id]. `const { id } = await params` (Promise await). 성공 후 revalidatePath. |
+| **frontend/app/todos/_components/TodoItem.tsx** | Client. 토글/삭제 버튼. 성공 후 router.refresh() (이미 /todos에 머무름). 실패는 try/catch + 인라인 UI. |
+| **frontend/app/todos/new/TodoForm.tsx** | Client. 생성 폼. 성공 후 router.refresh() → router.push("/todos") (순서 고정, stale 방지). |
+| **frontend/app/todos/[id]/EditForm.tsx** | Client. 수정 폼. 성공 후 router.refresh() → router.push("/todos"). |
+| **frontend/app/todos/_components/FilterTabs.tsx** | Client. 필터 탭. URLSearchParams 복제 후 filter key만 set/delete → router.push (search 파라미터 보존). |
+| **frontend/app/todos/_components/SearchBox.tsx** | Client. 검색창. ~300ms 디바운스, URLSearchParams 복제 후 search key만 set/delete. 빈 입력 시 delete (filter 보존). |
+| **frontend/.env.local** | NEXT_PUBLIC_API_URL(클라 fetch 베이스), BACKEND_URL(서버→FastAPI 베이스). |
+| **backend/.env.local** | DATABASE_URL=sqlite:///./todos.db. |
 
 ## For AI Agents
 
-### Working In This Directory
-- **React 함수 컴포넌트 + Vite + Tailwind v4.** 빌드·실행은 npm 스크립트(`npm run dev` / `npm run build`).
-- **상태는 커스텀 훅 3개에 나눠 있다.** `useTodos`(할 일·CRUD·영속화), `useSelectedDate`(선택 날짜·영속화), `useFilteredTodos`(필터 상태 + 보일 목록 계산). App은 이 셋을 조합만 하고 `useState`/`useEffect`를 직접 두지 않는다. 자식 컴포넌트는 props로 받은 데이터를 그리고, 이벤트는 props 콜백(`onAdd`/`onComplete`/`onEdit`/`onDelete`/`onSelectDate`/`onChange`)으로 위로 올린다. 새 상태는 함부로 자식에 두지 말고, 스테이트풀 로직을 빼낼 땐 `use~` 커스텀 훅 패턴(상태 1개 = 훅 1개)을 쓴다.
-- **상태는 불변(immutable)으로 업데이트.** `setTodos([...todos, x])`, `todos.map(...)`, `todos.filter(...)`를 쓰고 기존 배열/객체를 직접 변형하지 말 것. Date도 `setDate`는 원본을 바꾸므로 항상 `new Date(date)`로 복사 후 계산.
-- **파생값은 `useState`에 넣지 않는다.** 화면에 보일 목록(`visibleTodos`)·주간 날짜(`getWeekDates`)·날짜별 개수는 렌더 중에 계산한다. 저장 상태는 `todos`/`currentFilter`/`selectedDate`뿐.
-- **`key`는 `todo.id`.** `id`는 `crypto.randomUUID()`로 생성(표준 UUID, 충돌 구조적 방지). 배열 인덱스를 key로 쓰지 말 것. Todo 형태는 `{ id, text, completed, date }`.
-- **색은 Tailwind `@theme` 토큰으로.** `index.css`의 `--color-brand`/`-surface`/`-ink`/`-subtle`/`-line`/`-danger` 등으로 `bg-brand`·`text-ink` 같은 유틸리티를 쓴다. 색 hex를 컴포넌트에 하드코딩하지 말 것(그림자 등 일회성만 임의값 `[...]` 허용).
-- **주석은 "왜(WHY)"만.** self-documenting을 우선하고 이름으로 의도를 드러낸다. 코드만으론 모를 배경(예: `getDay()` 일요일=0, `toISOString` UTC 함정)만 짧게. 주석·식별자는 한국어.
+### Server/Client 경계 명확화
 
-### Testing Requirements
-- 자동화 테스트 없음. `npm run dev`로 띄워 브라우저에서 수동 확인.
-- 변경 후 **`npm run build`로 문법/빌드 검증**(끝나면 `dist/` 정리). 빠른 검사로도 컴파일 오류를 잡는다.
-- 확인 체크리스트: (1) 추가(폼 Enter·버튼), (2) 인라인 수정/완료/삭제, (3) 전체/진행중/완료 필터, (4) 주간 뷰 날짜 클릭 시 해당 날짜 항목만 + 칸별 개수, (5) 이전/다음 주, (6) 새로고침 후 todos·선택 날짜 유지.
-- 빈 입력 시 안내 메시지, 항목 0개일 때 빈 상태 문구 확인.
+**Server Component / Server-only:**
+- `app/todos/page.tsx` — searchParams await → getTodos() → 렌더. 쓰기 버튼은 없고, 필터/검색 UI만 포함 (그것도 Suspense로 감싼 Client 컴포넌트).
+- `app/todos/actions.ts` — `getTodos(filter, search)`: 순수 fetch 헬퍼. "use server" 없음 (Server Component에서 직접 import+호출하는 일반 함수). BACKEND_URL 환경변수 사용. cache: "no-store" — 매번 최신.
+- `app/todos/new/page.tsx`, `app/todos/[id]/page.tsx` — 껍데기 Server. 폼은 Client 자식.
+- `app/api/todos/route.ts`, `app/api/todos/[id]/route.ts` — Route handler (서버 측). BACKEND_URL로 FastAPI 프록시. revalidatePath("/todos") 호출.
 
-### Common Patterns
-- **입력 제출은 `<form onSubmit>` + `event.preventDefault()`.** Enter·추가 버튼을 form submit 하나로 처리한다. (한글 IME 중복 입력을 `isComposing`으로 막지 않는 이유: form submit이 브라우저 차원에서 처리하기 때문.)
-- **날짜 키 `"YYYY-MM-DD"`(로컬 시간).** `formatDateKey`가 `padStart(2,"0")`로 만들고(`toISOString()`은 UTC라 금지), `parseDateKey`가 `"2026-06-10"` → 로컬 `Date`로 복원(`new Date("...")` 문자열 파싱은 UTC라 금지, 숫자 분해해 `new Date(y, m-1, d)`). 날짜 비교·저장은 이 키 기준.
-- **주 시작은 월요일.** `getMonday`가 선택 날짜가 속한 주의 월요일을 구하고, `getWeekDates`가 월→일 7칸을 만든다(`setDate` 자동 넘침으로 월 경계 처리). `addWeeks(date, n)`로 이전/다음 주.
-- **localStorage 동기화:** `useEffect(() => localStorage.setItem(...), [의존성])`로 자동 저장, `useState(() => localStorage.getItem(...) ...)` 함수형 초기화로 복원. 저장(`JSON.stringify`/`formatDateKey`)과 복원(`JSON.parse`/`parseDateKey`)이 짝. todos는 `useTodos`, selectedDate는 `useSelectedDate` 훅이 각각 담당. 훅 안의 `setTodos`는 `(prev) => ...` **함수형 업데이트**로 최신 상태를 받는다.
-- **반복 className은 상수로.** 동일한 긴 Tailwind 클래스가 반복되면(예: `TodoItem`의 `buttonClass`) 컴포넌트 상단 상수로 빼서 한 곳에서 관리.
-- **콜백은 화살표 함수로**, 목록 순회는 배열 메서드(`map`/`filter`)로.
-- **컴포넌트 import는 배럴(`components/index.js`) 경유.** App은 `import { ... } from "./components"`로 가져온다. 외부에서 안 쓰는 내부 전용 컴포넌트(`TodoItem`)는 배럴에 넣지 않는다.
+**Client Component ("use client"):**
+- `app/todos/_components/TodoItem.tsx` — 토글/삭제. `NEXT_PUBLIC_API_URL`로 route handler 호출. 성공 후 `router.refresh()`. 실패는 try/catch + 인라인 에러 (폼/항목 하단에 "저장에 실패했습니다. 다시 시도하세요.").
+- `app/todos/new/TodoForm.tsx`, `app/todos/[id]/EditForm.tsx` — 생성/수정 폼. `NEXT_PUBLIC_API_URL`로 POST/PUT. 성공 후 `router.refresh()` 다음 `router.push("/todos")` (순서 고정).
+- `app/todos/_components/FilterTabs.tsx`, `app/todos/_components/SearchBox.tsx` — 필터/검색 UI. `useSearchParams` (Suspense로 감싼 후 포함). URLSearchParams 복제 후 자신의 키만 수정 (상대 파라미터 보존). router.push(`/todos?...`).
+
+### 환경변수 사용처
+
+| 변수 | 접두사 | 사용처 | 용도 |
+|------|--------|---------|------|
+| `NEXT_PUBLIC_API_URL` | `NEXT_PUBLIC_` | Client (TodoItem, TodoForm, EditForm, FilterTabs, SearchBox) | 클라이언트 fetch의 베이스 URL. `${NEXT_PUBLIC_API_URL}/todos`로 route handler 호출. 브라우저에 노출됨. |
+| `BACKEND_URL` | 없음 | Server (actions.ts, route.ts) | actions.ts의 getTodos() + route handler가 FastAPI를 호출할 때의 베이스 URL. 브라우저에 노출 안 됨. |
+| `DATABASE_URL` | 없음 | Backend 서버 (database.py) | SQLAlchemy 엔진의 DB 연결 문자열. |
+
+### Next.js 16 Async Params & SearchParams
+
+**반드시 await하기:**
+```typescript
+// ❌ 동기 접근 (에러)
+const { filter } = searchParams;
+
+// ✅ Promise → await (올바름)
+const { filter } = await searchParams;
+
+// API 라우트 핸들러도 동일
+const { id } = await params;
+```
+
+### 읽기 = actions.ts, 쓰기 = route.ts 역할 분담
+
+| 작업 | 경로 | 메커니즘 |
+|------|------|----------|
+| 목록 조회 | `actions.ts` getTodos() | Server Component에서 직접 호출. cache: "no-store" (매번 최신). |
+| 생성 | `app/api/todos/route.ts` POST | 클라이언트 → fetch(`${NEXT_PUBLIC_API_URL}/todos`) → route handler → FastAPI. revalidatePath 후 클라 router.refresh() + router.push. |
+| 수정 | `app/api/todos/[id]/route.ts` PUT | 클라이언트 → fetch(`${NEXT_PUBLIC_API_URL}/todos/${id}`, PUT) → route handler → FastAPI. 동일하게 revalidatePath + router.refresh() + router.push. |
+| 삭제 | `app/api/todos/[id]/route.ts` DELETE | 클라이언트 → fetch(`${NEXT_PUBLIC_API_URL}/todos/${id}`, DELETE) → route handler → FastAPI. router.refresh()만 (이미 `/todos`에 머무름). |
+
+**왜 프록시인가?** 백엔드 API 경로 숨김 + CORS 간소화 + 환경별 URL 일관성.
+
+### UI 갱신 3단계 메커니즘
+
+**1. cache: "no-store"** (actions.ts)
+- getTodos()의 fetch가 캐시에 저장되지 않음 → 재렌더될 때마다 항상 최신 데이터 가져옴.
+- **갱신을 트리거하지는 않음** (읽기만 담당).
+
+**2. router.refresh() / router.push()** (클라이언트)
+- **실제 갱신 동력 (가장 중요)**.
+- router.refresh() → Server Component 재렌더 → getTodos() 다시 호출 → 최신 데이터.
+- 생성/수정: router.refresh() 후 router.push("/todos") (push 단독은 Router Cache 때문에 stale).
+- 토글/삭제: router.refresh()만 (이미 `/todos`에 있으므로 push 불필요).
+
+**3. revalidatePath("/todos")** (route handler)
+- 캐시 무효화 안전망.
+- 현 설정(no-store)에선 사실상 no-op (무효화할 캐시가 없음).
+- 향후 읽기 캐싱을 켜거나 다른 진입점이 캐시를 탈 때 대비.
+
+**핵심:** "UI가 안 바뀐다"의 원인은 거의 항상 **router.refresh() 누락** (revalidatePath 문제 아님).
+
+### 동적 세그먼트 & Params 추출
+
+**페이지:**
+```typescript
+// app/todos/[id]/page.tsx (Server Component)
+export default async function EditPage({
+  params,
+}: PageProps<"/todos/[id]">) {
+  const { id } = await params;  // Promise → await
+  const todo = await getTodo(id);
+  return <EditForm todo={todo} />;
+}
+```
+
+**API Route:**
+```typescript
+// app/api/todos/[id]/route.ts
+export async function PUT(
+  request: Request,
+  { params }: RouteContext<"/api/todos/[id]">,
+) {
+  const { id } = await params;  // Promise → await (동일 패턴)
+  ...
+}
+```
+
+세그먼트명 `[id]`로 통일 → 혼동 방지.
+
+### 필터·검색 URL 파라미터 관리
+
+**공존 보장:**
+```typescript
+// ✅ URLSearchParams 복제 후 자신의 키만 수정
+const params = new URLSearchParams(useSearchParams());
+params.set("filter", value);  // search는 건드리지 않음
+router.push(`/todos?${params}`);
+
+// ✅ 검색도 동일
+const params = new URLSearchParams(useSearchParams());
+if (value) {
+  params.set("search", value);
+} else {
+  params.delete("search");  // 빈 입력 시 제거
+}
+params.delete("filter");  // filter는 건드리지 않음
+router.push(`/todos?${params}`);
+```
+
+**❌ 피할 것:**
+```typescript
+// 새 객체로 push → 기존 파라미터 손실
+router.push(`/todos?filter=${value}`);  // search 없어짐
+```
+
+### 서버 필터링 로직 (FastAPI)
+
+```python
+# GET /todos?filter=active&search=장
+query = db.query(Todo)
+
+# filter 처리: all|active|completed 외 값은 all로 폴백
+if filter == "active":
+    query = query.filter(Todo.completed == False)
+elif filter == "completed":
+    query = query.filter(Todo.completed == True)
+# else: all (조건 없음)
+
+# search 처리: 교집합
+if search and search.strip():
+    query = query.filter(Todo.text.like(f"%{search.strip()}%"))
+
+return query.all()
+```
+
+**응답:** completed=false AND text LIKE '%장%'인 항목만.
+
+### Suspense Boundary
+
+`useSearchParams()`를 쓰는 Client Component는 반드시 Suspense로 감싸기:
+
+```typescript
+// app/todos/page.tsx (Server)
+<Suspense>
+  <FilterTabs />
+  <SearchBox />
+</Suspense>
+```
+
+**이유:** 빌드·정적 생성 시 필요 (Next.js 요구사항).
+
+### 엔드포인트 요청 예시
+
+**POST (생성):**
+```bash
+curl -X POST http://localhost:8000/todos \
+  -H "Content-Type: application/json" \
+  -d '{"text": "사과 사기"}'
+# → 201, { "id": 1, "text": "사과 사기", "completed": false }
+```
+
+**GET (필터+검색):**
+```bash
+curl "http://localhost:8000/todos?filter=active&search=사과"
+# → 200, [{ "id": 1, "text": "사과 사기", "completed": false }, ...]
+```
+
+**PUT (수정):**
+```bash
+curl -X PUT http://localhost:8000/todos/1 \
+  -H "Content-Type: application/json" \
+  -d '{"completed": true}'
+# → 200, { "id": 1, "text": "사과 사기", "completed": true }
+```
+
+**DELETE:**
+```bash
+curl -X DELETE http://localhost:8000/todos/1
+# → 204 (No Content)
+```
+
+**공백 검증:**
+```bash
+curl -X POST http://localhost:8000/todos \
+  -d '{"text": "   "}'
+# → 422 Unprocessable Entity (공백 전용 텍스트 거부)
+```
+
+## Testing Requirements
+
+### 백엔드 단독 검증
+
+1. 터미널 1에서 백엔드 시작: `cd backend && source .venv/bin/activate && uvicorn main:app`
+2. http://localhost:8000/docs 접속 → 4개 엔드포인트(GET/POST/PUT/DELETE /todos) 확인.
+3. POST로 할 일 2~3개 생성 → GET으로 전체 확인 (길이 증가).
+4. **공백 text POST** → 422, DB 행 미생성.
+5. **PUT `?filter=active`** → completed=false만.
+6. **GET `?filter=active&search=<텍스트>`** → 교집합만.
+7. **PUT `{}`** (빈 body) → 200, 무변경.
+8. **존재 안 하는 ID PUT/DELETE** → 404.
+
+### 프론트+백엔드 E2E
+
+1. 두 서버 모두 실행 (백: :8000, 프: :3000).
+2. `/todos` 접속 → 목록 표시 (Server Component 렌더).
+3. "새 할 일" → `/todos/new` 폼 입력 제출 → `/todos`로 이동, **새로고침 없이** 신규 항목 노출.
+4. 목록 항목 토글 → **새로고침 없이** 완료 상태 변화.
+5. 삭제 버튼 → **새로고침 없이** 항목 제거.
+6. 항목 클릭 → `/todos/[id]` 페이지, text prefill. 수정 → `/todos`로 이동, 변경 반영.
+7. 필터 탭 → URL에 `?filter=...`, 새로고침 후 유지.
+8. 검색 입력 → ~300ms 정지 후 `?search=...` 1회 갱신.
+9. 필터 상태에서 검색 → URL에 `filter`·`search` 공존, 교집합 결과.
+10. 백엔드 중단 → `/todos` 재접속, `error.tsx` 폴백 + reset 버튼.
+11. 토글/삭제 실패(예: 백엔드 일시 중단) → 컴포넌트 인라인 에러 (error.tsx는 뜨지 않음).
+12. 네트워크 탭에서 클라이언트 → `/api/todos` → 백엔드 흐름 확인.
+
+### 콘솔 & 정리
+
+- 콘솔 에러 0개.
+- `console.log` / 주석 코드 0개.
+- `git status`로 `.env.local` / `todos.db` / `node_modules` / `.venv` 미추적 확인.
 
 ## Dependencies
 
-### Internal
-- `App.jsx` → `hooks/*`, `components/*`(배럴 `index.js` 경유), `utils/date.js`. 컴포넌트 간 데이터는 props로만 흐른다.
+### Internal (frontend)
+- `app/todos/page.tsx` → `actions.ts` (getTodos), `_components/*` (Client 자식들).
+- `_components/*` → `NEXT_PUBLIC_API_URL` 환경변수 + `app/api/todos/*` route handler 호출.
+- `app/api/todos/*` → `BACKEND_URL` 환경변수 + FastAPI 호출.
+
+### Internal (backend)
+- `main.py` → `database.py` (엔진/세션), `models.py` (ORM), `schemas.py` (Pydantic).
+- `models.py` → `database.py` (Base).
+- `schemas.py` → Pydantic v2 (필드 검증).
 
 ### External
-- React, ReactDOM, Vite, `@vitejs/plugin-react`, Tailwind CSS v4(`@tailwindcss/vite`). 그 외 서드파티 런타임 라이브러리 없음(`Date`/`localStorage` 등 Web API 직접 사용).
+- **Frontend:** Next.js 16, React 19, TypeScript, Tailwind CSS v4.
+- **Backend:** FastAPI, Uvicorn, SQLAlchemy, SQLite, Pydantic v2.
 
 <!-- MANUAL: 이 줄 아래에 수동으로 추가한 메모는 재생성 시에도 보존됩니다. -->

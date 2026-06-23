@@ -1,164 +1,182 @@
-# Deep Interview Spec: Vanilla JS Todo → React 마이그레이션
+# 과제3 구현 계획 요약
 
-## Metadata
-- Interview ID: react-todo-migration
-- Rounds: 6
-- Final Ambiguity Score: 12%
-- Type: brownfield (1차 `app.js` 기반)
-- Generated: 2026-06-09
-- Threshold: 0.2 (20%)
-- Threshold Source: default
-- Initial Context Summarized: no
-- Status: PASSED
-- 구현 진행 (2026-06-10): CRUD(AC-1~7) ✅, 상태 필터(AC-8~10) ✅, 주간 날짜 뷰(AC-11~16) ✅, localStorage(AC-17~19) ✅ — **기능 19개 전부 완료**
-- 후속 작업 (2026-06-10): ① 과제1 보라 테마 디자인 이식 완료(@theme 토큰 + Lobster 폰트 + WeekStrip 리디자인). ② 1차 잔재(app.js/style.css/App.css)·미사용 템플릿 에셋 삭제. ③ 상태 로직을 커스텀 훅 3개(`useTodos`/`useSelectedDate`/`useFilteredTodos`)로 분리하고 컴포넌트는 배럴(`components/index.js`)로 정리 → App.jsx는 조립만 담당. ④ README/AGENTS.md 2차 기준 갱신. ※ 디자인·리팩토링은 본 명세의 기능 AC 범위 밖
-- 과제2 피드백 반영 (2026-06-23): ① `id` 생성을 `Date.now()` → `crypto.randomUUID()`(표준 + 같은 밀리초 충돌 구조적 방지). ② 주간 7칸 생성을 `[0,1,2,3,4,5,6]` 매직넘버 → `Array.from({ length: DAYS_IN_WEEK })`(상수로 의도 노출). ③ 이 계획서를 `docs/PLAN.md`로 추적 위치에 노출(튜터 "플랜 문서 없음" 피드백).
+> 상세 계획: `.omc/plans/assignment3-nextjs-fastapi.md`  
+> 스펙 문서: `.omc/specs/deep-interview-assignment3-nextjs-fastapi.md`
 
-## Clarity Breakdown
-| Dimension | Score | Weight | Weighted |
-|-----------|-------|--------|----------|
-| Goal Clarity | 0.88 | 0.35 | 0.308 |
-| Constraint Clarity | 0.90 | 0.25 | 0.225 |
-| Success Criteria | 0.85 | 0.25 | 0.213 |
-| Context Clarity | 0.90 | 0.15 | 0.135 |
-| **Total Clarity** | | | **0.881** |
-| **Ambiguity** | | | **0.119 (12%)** |
+**상태:** 구현 완료 (2026-06-24)
 
-## Topology
-범위 결정: **주간 뷰 통합(A)** — 1차에 이미 있던 주간 스트립을 메인 날짜 UI로 유지하고, 일간 뷰는 그 안에 포함된 것으로 본다.
+## 핵심 설계 결정
 
-| Component | Status | Description | Coverage / Deferral Note |
-|-----------|--------|-------------|--------------------------|
-| Todo CRUD | active | 추가 / 인라인 수정 / 완료 토글 / 삭제 | AC-1~AC-7 |
-| 상태 필터 | active | 전체·진행중·완료 탭 + 빈 상태 | AC-8~AC-10 |
-| 주간 날짜 뷰 | active | 주간 스트립, 선택 날짜, 오늘 표시, 날짜별 개수, 이전/다음 주, 날짜 연동 (일간 포함) | AC-11~AC-16 |
-| localStorage 영속화 | active | todos + 선택 날짜 저장/복원, 새로고침 유지 | AC-17~AC-19 |
+### 1. 데이터 모델: 평평한 Todo
 
-> Vite/Tailwind 세팅은 컴포넌트가 아니라 전제조건으로 "기술 컨텍스트"에 기록.
+```typescript
+type Todo = {
+  id: number;           // SQLite 자동증가 정수 (UUID 아님)
+  text: string;         // 공백만 거부
+  completed: boolean;
+}
+```
 
-## Goal
-1차 Vanilla JS Todo 앱을 **React(Vite + Tailwind v4) Function Component 구조**로 마이그레이션한다. 기존 기능(추가/수정/완료/삭제, 상태 필터, 주간 날짜 뷰, localStorage 영속화)을 보존하되, DOM 직접 조작 방식을 **state 기반 선언적 렌더링**으로 전환하고, `prompt()` 수정을 **인라인 입력창**으로 바꾼다. 학습 목적상 AI가 통째로 구현하지 않고, 사용자가 직접 읽고 수정하며 진행한다.
+**특징:**
+- 2차의 날짜 모델(`date` 필드) 제외 (별도 브랜치 week-02 보존).
+- 서버 생성: POST 본문에 id 미포함, FastAPI가 응답에 포함.
 
-## Constraints
-- React 19, Vite 8, Tailwind CSS v4 (PostCSS 미사용, `@tailwindcss/vite` 플러그인 방식), JavaScript
-- 파일 구조는 `src/components/` 기준으로 분리
-- 각 Todo는 `{ id, text, completed, date }` 형태. `id`는 `crypto.randomUUID()`로 생성하여 React `key`로 사용 (처음엔 `Date.now()`로 했으나 과제2 피드백으로 표준 방식 + 같은 밀리초 충돌의 구조적 방지를 위해 UUID로 전환)
-- 날짜 키 형식은 `"YYYY-MM-DD"` (예: `"2026-06-03"`). **로컬 시간 기준 + 직접 `padStart(2,"0")`** 으로 생성 (`toISOString()`은 UTC 변환으로 한국에서 날짜가 밀리므로 금지)
-- 1차 localStorage 데이터와의 호환은 포기하고 새로 시작 (id 부재 + 날짜 키 형식 차이)
-- 인라인 수정: 저장/취소 버튼 + Enter 저장, 빈 값이면 저장하지 않음
-- 빈 입력 추가 시: `message` 상태로 안내 문구 표시, 정상 추가되면 제거
-- 빈 목록 상태: 필터별 3종이 아닌 **통일된 빈 상태 메시지 하나**
-- 선택 날짜(`selectedDate`)도 localStorage에 저장하여 새로고침 후 유지
-- 제출 마감: 2026-06-10(수) 23:59
+### 2. 구조: frontend + backend 분리 모노레포
 
-## Non-Goals
-- 1차 localStorage 데이터 마이그레이션(자동 변환) — 하지 않음
-- 필터별로 다른 빈 상태 문구 — 통일된 하나로 단순화
-- 명세에 없는 추가 기능(태그, 우선순위, 검색 등) — 범위 외
-- 계획 단계 자체에서는 코드 구현 제외 (문서 우선·피드백 2번) — 구현은 이후 완료(상단 Metadata 참고)
+```
+루트/
+├── frontend/     (Next.js 16 App Router)
+├── backend/      (FastAPI + SQLite)
+└── docs/
+```
 
-## Acceptance Criteria
-**Todo CRUD**
-- [x] AC-1: 텍스트 입력 + 추가 버튼(또는 Enter)으로 새 Todo 생성
-- [x] AC-2: 빈 입력 제출 시 Todo가 생성되지 않고 안내 메시지 표시, 정상 추가 시 메시지 사라짐
-- [x] AC-3: 생성된 Todo는 목록으로 렌더링되며 각 항목은 고유 `id`를 `key`로 가짐
-- [x] AC-4: 수정 버튼 클릭 시 해당 항목이 인라인 입력창으로 전환(`isEditing`)
-- [x] AC-5: 수정 중 저장 버튼/Enter로 저장, 취소 버튼으로 원복, 빈 값은 저장 안 됨
-- [x] AC-6: 완료 토글 시 시각적 구분(취소선) + 버튼 라벨 "완료↔취소" 전환
-- [x] AC-7: 삭제 버튼으로 항목 제거
+**이점:**
+- 두 스택 독립 실행 (.gitignore 분리).
+- 명확한 Server/Client 경계.
+- 환경별 URL 관리 용이.
 
-**상태 필터**
-- [x] AC-8: 전체/진행 중/완료 탭으로 해당 상태의 Todo만 표시
-- [x] AC-9: 현재 선택된 탭이 시각적으로 구분됨
-- [x] AC-10: 보일 항목이 0개일 때 통일된 빈 상태 메시지 표시
+### 3. 데이터 흐름
 
-**주간 날짜 뷰**
-- [x] AC-11: 주간 스트립(월~일 7칸) 표시, 선택 날짜 강조, 오늘 날짜 별도 표시
-- [x] AC-12: 각 날짜 칸에 해당 날짜의 Todo 개수 표시
-- [x] AC-13: 이전 주 / 다음 주 이동 버튼 동작
-- [x] AC-14: 날짜 칸 클릭 시 해당 날짜로 선택 전환
-- [x] AC-15: 선택된 날짜의 Todo만 목록에 표시 (날짜 + 필터 동시 적용)
-- [x] AC-16: Todo 생성 시 현재 선택된 날짜가 자동 저장됨
+**읽기:**
+```
+Server Component → actions.ts (getTodos)
+                 ↓ cache: "no-store"
+               FastAPI: GET /todos?filter=...&search=...
+                 ↓
+              SQLite (필터 + 검색)
+```
 
-**localStorage 영속화**
-- [x] AC-17: todos 변경 시 `useEffect`로 자동 저장 (JSON.stringify/parse)
-- [x] AC-18: 새로고침 후에도 todos 유지 (함수형 초기화로 초기값 로드)
-- [x] AC-19: 새로고침 후에도 선택했던 날짜/주 유지
+- `actions.ts`는 "use server" 없는 순수 fetch 헬퍼.
+- 매번 최신 데이터 (캐시 사용 안 함).
 
-## Assumptions Exposed & Resolved
-| Assumption | Challenge | Resolution |
-|------------|-----------|------------|
-| Todo에 id가 없어도 된다 (1차) | React map은 고유 key 필요 | `crypto.randomUUID()`로 id 부여 (과제2 피드백 — 표준 + 충돌 구조적 방지) |
-| 날짜 키는 1차의 "2026-6-3" 형식 | 정렬·표준성 약함 | `"YYYY-MM-DD"` (로컬 padStart) |
-| `toISOString()`으로 짧게 쓰면 됨 | UTC 변환으로 한국 날짜 밀림 | 직접 padStart로 로컬 시간 유지 |
-| 수정은 prompt() | 명세가 인라인 입력창 요구 | isEditing 상태 + 저장/취소 버튼 + Enter |
-| 빈 목록은 필터별 3종 문구 (1차) | 사용자에겐 "없음"만 알면 충분 | 통일된 빈 상태 하나 (Contrarian) |
-| 선택 날짜는 새로고침 시 오늘로 리셋 (1차) | 도전 미션이 주차 유지 요구 | selectedDate도 localStorage 저장 (Simplifier 검토 후 유지 선택) |
+**쓰기:**
+```
+Client Component → fetch(NEXT_PUBLIC_API_URL)
+                 ↓
+            Next.js route handler
+                 ↓ fetch(BACKEND_URL)
+               FastAPI (쓰기)
+                 ↓
+          revalidatePath + router.refresh()
+```
 
-## Technical Context
-- **마이그레이션 출발점이던 1차 코드**(`app.js`, 287줄, 현재 브랜치에선 제거됨): DOM 직접 조작 방식. 주요 함수 — `formatDateKey`(31), `getMonday`(34), `renderWeek`(49), `applyFilter`(137), `createTodoElement`(194), `addTodo`(250), `saveTodos`/`loadTodos`(112/123). 이미 form submit, 배열 메서드 리팩토링(피드백 4·5번) 반영됨.
-- **세팅**: 현 폴더(브랜치 `week-03-오채민`) 루트에 직접 스캐폴딩. `npm create vite@latest . -- --template react` (비어있지 않은 폴더 프롬프트에서 **"Ignore files and continue"** 선택 — "Remove"는 1차 파일 삭제하니 금지) → `npm install` → `npm i -D tailwindcss @tailwindcss/vite` → `vite.config.js`에 `tailwindcss()` 플러그인 추가 → `src/index.css`에 `@import "tailwindcss";`. 주의: Vite 템플릿이 `.gitignore`를 덮어쓰므로 `.omc/`·`AGENTS.md` 무시 규칙을 다시 추가해야 함. 1차 원본(index.html 등)은 `week-02-오채민` 브랜치에 보존됨.
-- **제안 컴포넌트 구조** (참고용, 구현 시 확정):
-  - `App.jsx` — state 소유(todos, currentFilter, selectedDate, message), localStorage useEffect
-  - `TodoForm.jsx` — 입력/추가, 빈 입력 메시지
-  - `FilterTabs.jsx` — 전체/진행중/완료 탭
-  - `WeekStrip.jsx` — 주간 스트립, 이전/다음 주, 날짜별 개수
-  - `TodoList.jsx` + `TodoItem.jsx` — 목록 / 개별 항목(수정·완료·삭제, isEditing)
-- **React 개념(초보자 학습 포인트)**: `useState`, `useEffect`(의존성 배열 `[todos]`), 함수형 초기화 `useState(() => ...)`, props로 데이터/콜백 전달, 조건부 렌더링(`isEditing`), `map`의 `key`
+- Route handler는 프록시 역할 (백엔드 API 경로 숨김).
+- 클라이언트가 `router.refresh()`로 실제 갱신 트리거 (중요).
 
-## Ontology (Key Entities)
-| Entity | Type | Fields | Relationships |
-|--------|------|--------|---------------|
-| Todo | core domain | id, text, completed, date | App이 todos 배열로 소유 |
-| Filter | supporting (UI state) | "all" / "active" / "completed" | App이 currentFilter로 소유 |
-| SelectedDate | supporting (UI state) | Date (키: "YYYY-MM-DD") | Todo.date와 매칭, 주간뷰 기준 |
+### 4. 서버 필터링 + 검색
 
-## Ontology Convergence
-| Round | Entity Count | New | Changed | Stable | Stability Ratio |
-|-------|-------------|-----|---------|--------|----------------|
-| 1 | 1 (Todo) | 1 | - | - | N/A |
-| 2 | 2 (+SelectedDate) | 1 | 0 | 1 | 50% |
-| 3 | 2 | 0 | 0 | 2 | 100% |
-| 4 | 3 (+Filter) | 1 | 0 | 2 | 67% |
-| 5 | 3 | 0 | 0 | 3 | 100% |
-| 6 | 3 | 0 | 0 | 3 | 100% |
+**FastAPI 엔드포인트:**
+- `GET /todos?filter=all|active|completed&search=키워드`
+- 필터 + 검색 교집합 (둘 다 Optional).
+- 비정상 filter 값은 `all`로 폴백.
+- 공백 search는 무시.
 
-## Interview Transcript
-<details>
-<summary>Full Q&A (6 rounds)</summary>
+**클라이언트 URL 관리:**
+- URLSearchParams 복제 후 자신의 키만 수정 (파라미터 공존 보장).
+- 검색은 ~300ms 디바운스.
+- 필터/검색 상태는 URL에 유지 (새로고침/공유 시 복구).
 
-### Round 0 (Topology)
-**Q:** 4개 최상위 컴포넌트(Todo CRUD / 상태 필터 / 주간 날짜 뷰 / localStorage)로 읽었는데 맞나요?
-**A:** 추천대로 → 4개 컴포넌트 확정.
+### 5. 3단계 UI 갱신 메커니즘
 
-### Round 1
-**Q:** 각 Todo를 React에서 어떻게 구별(key)할까요?
-**A:** 새 id 필드 추가 → `{ id, text, completed, date }`.
-**Ambiguity:** 38%
+| 단계 | 담당 | 역할 |
+|------|------|------|
+| 1. cache: no-store | actions.ts fetch | 항상 최신 읽기 |
+| 2. router.refresh() | 클라이언트 | **실제 갱신 트리거 (가장 중요)** |
+| 3. revalidatePath | route handler | 캐시 안전망 (현 설정에선 no-op) |
 
-### Round 2
-**Q:** 날짜 저장 키 문자열 형식은?
-**A:** ISO "2026-06-03" (직접 padStart, 로컬 시간). toISOString UTC 함정 회피.
-**Ambiguity:** 33%
+**생성/수정:** `router.refresh()` → `router.push("/todos")` (순서 고정)  
+**토글/삭제:** `router.refresh()`만
 
-### Round 3
-**Q:** 인라인 수정 저장/취소 트리거는?
-**A:** 저장/취소 버튼 + Enter 저장, 빈 값 저장 안 함.
-**Ambiguity:** 28%
+## 요구사항 원점
 
-### Round 4 (Contrarian)
-**Q:** 빈 목록일 때 필터별 3종 문구가 정말 필요한가?
-**A:** 통일된 빈 상태 메시지 하나.
-**Ambiguity:** 22.5%
+### 백엔드 AC (합격 기준)
 
-### Round 5
-**Q:** 빈 입력 추가 시 안내 처리는?
-**A:** 1차처럼 message 상태로 표시/제거.
-**Ambiguity:** 17.5%
+- [x] 4개 엔드포인트(GET/POST/PUT/DELETE `/todos`) 노출 및 동작.
+- [x] POST 공백 text → 422 거부.
+- [x] PUT 공백 text → 422 거부.
+- [x] PUT `{}` (빈 body) → 200, 무변경.
+- [x] `?filter=active|completed` → 필터링.
+- [x] `?filter=비정상값` → `all`로 폴백.
+- [x] `?search=...` → 부분 일치.
+- [x] `?filter=active&search=...` → 교집합.
+- [x] 없는 ID 조회/수정/삭제 → 404.
+- [x] CORS: `localhost:3000` 허용.
 
-### Round 6 (Simplifier)
-**Q:** 새로고침 시 선택 날짜/주를 유지할까?
-**A:** 선택 날짜도 localStorage에 유지 (도전 미션).
-**Ambiguity:** 12%
+### 프론트 AC
 
-</details>
+- [x] `/` → `/todos` redirect.
+- [x] `/todos`는 Server Component (JS 비활성 상태에서도 HTML 렌더).
+- [x] 생성 후 새로고침 없이 목록 갱신 (네트워크 탭: GET /todos 재요청 1건).
+- [x] 토글/삭제 후 새로고침 없이 즉시 반영.
+- [x] 수정 페이지 진입 시 text prefill.
+- [x] 필터 탭 클릭 → URL `?filter=`, 새로고침/공유 후 유지.
+- [x] 검색 입력 → ~300ms 후 URL `?search=` 1회 갱신.
+- [x] 필터+검색 공존 → `?filter=...&search=...` 교집합 결과.
+- [x] loading.tsx 존재 + 렌더 정상.
+- [x] error.tsx: 서버 렌더 에러 폴백. 쓰기 실패는 인라인 UI.
+- [x] 항목 0개 → "할 일이 없습니다" 문구.
+- [x] 빈/공백 입력 → 클라이언트 거부 + 백엔드 422 (이중 방어).
+
+## 핵심 파일
+
+| 파일 | 역할 |
+|------|------|
+| `backend/main.py` | CRUD 엔드포인트 + 필터/검색 로직 + CORS |
+| `backend/models.py` | Todo ORM 모델 |
+| `backend/schemas.py` | Pydantic 검증 (공백 text 거부) |
+| `backend/database.py` | SQLAlchemy 설정 |
+| `frontend/app/todos/page.tsx` | 목록 Server Component |
+| `frontend/app/todos/actions.ts` | 읽기 헬퍼 (no-store) |
+| `frontend/app/api/todos/route.ts` | POST 프록시 |
+| `frontend/app/api/todos/[id]/route.ts` | PUT/DELETE 프록시 |
+| `frontend/app/todos/_components/TodoItem.tsx` | 토글/삭제 (router.refresh) |
+| `frontend/app/todos/new/TodoForm.tsx` | 생성 (router.refresh → push) |
+| `frontend/app/todos/[id]/EditForm.tsx` | 수정 (router.refresh → push) |
+| `frontend/app/todos/_components/FilterTabs.tsx` | 필터 탭 (URLSearchParams 복제) |
+| `frontend/app/todos/_components/SearchBox.tsx` | 검색 (디바운스) |
+
+## 환경변수
+
+**frontend/.env.local:**
+- `NEXT_PUBLIC_API_URL=http://localhost:3000/api` (클라이언트 fetch 베이스)
+- `BACKEND_URL=http://localhost:8000` (서버→FastAPI 베이스)
+
+**backend/.env.local:**
+- `DATABASE_URL=sqlite:///./todos.db`
+
+## 실행 방법
+
+### 백엔드
+```bash
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app      # :8000, /docs에서 API 문서
+```
+
+### 프론트엔드
+```bash
+cd frontend
+npm install
+npm run dev           # :3000
+```
+
+두 서버를 동시에 띄워야 동작합니다.
+
+## 검증 체크리스트
+
+- [x] 두 서버 기동 후 `/todos` 접속 → 목록 렌더.
+- [x] 새 할 일 생성 → 새로고침 없이 노출.
+- [x] 토글/삭제 → 새로고침 없이 반영.
+- [x] 필터 탭 → URL 유지.
+- [x] 검색 입력 → 디바운스 + URL 유지.
+- [x] 필터+검색 동시 적용.
+- [x] 에러 처리 (백엔드 다운 → error.tsx).
+- [x] 콘솔 에러 0개, 정리 완료.
+
+## 선택 사항 (본 범위 미포함)
+
+- 통합 실행 스크립트 (각자 기동).
+- 검색 대소문자 처리 (SQLite LIKE 기본값).
+- 추가 기능 (태그, 우선순위 등).
