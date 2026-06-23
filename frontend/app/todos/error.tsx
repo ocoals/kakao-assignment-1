@@ -3,10 +3,8 @@
 // 서버 렌더 에러(예: 백엔드 다운) 전용 폴백.
 // 클라이언트 쓰기 실패(토글/삭제/저장)는 각 컴포넌트의 인라인 에러로 처리한다.
 export default function Error({
-  error,
   unstable_retry,
 }: {
-  error: Error & { digest?: string };
   unstable_retry: () => void;
 }) {
   return (
