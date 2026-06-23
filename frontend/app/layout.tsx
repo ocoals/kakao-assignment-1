@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "할 일 목록",
+  title: "Todo List",
   description: "Next.js + FastAPI 할 일 관리 앱",
 };
 
