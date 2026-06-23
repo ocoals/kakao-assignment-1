@@ -20,9 +20,11 @@ export function getMonday(date) {
   return monday;
 }
 
+const DAYS_IN_WEEK = 7;
+
 export function getWeekDates(date) {
   const monday = getMonday(date);
-  return [0, 1, 2, 3, 4, 5, 6].map((i) => {
+  return Array.from({ length: DAYS_IN_WEEK }, (_, i) => {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
     return d;
