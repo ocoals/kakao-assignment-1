@@ -5,10 +5,12 @@ import { lobster } from "../../fonts";
 import EditForm from "./EditForm";
 
 // 할 일 수정 페이지 (Server). id로 기존 Todo를 조회해 폼에 prefill 한다.
-export default async function EditTodoPage({ params }: PageProps<"/todos/[id]">) {
+export default async function EditTodoPage({
+  params,
+}: PageProps<"/todos/[todoId]">) {
   // Next.js 16: params는 Promise → await
-  const { id } = await params;
-  const todo = await getTodo(id); // 없으면 actions에서 notFound()
+  const { todoId } = await params;
+  const todo = await getTodo(todoId); // 없으면 actions에서 notFound()
 
   return (
     <div className="flex min-h-screen justify-center bg-surface px-5 py-15">

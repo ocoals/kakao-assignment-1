@@ -5,13 +5,13 @@ const BACKEND_URL = process.env.BACKEND_URL;
 
 export async function PUT(
   request: Request,
-  { params }: RouteContext<"/api/todos/[id]">,
+  { params }: RouteContext<"/api/todos/[todoId]">,
 ) {
-  const { id } = await params; // Next.js 16: params는 Promise → await
+  const { todoId } = await params; // Next.js 16: params는 Promise → await
   const body = await request.json();
 
   try {
-    const res = await fetch(`${BACKEND_URL}/todos/${id}`, {
+    const res = await fetch(`${BACKEND_URL}/todos/${todoId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -32,12 +32,12 @@ export async function PUT(
 
 export async function DELETE(
   _request: Request,
-  { params }: RouteContext<"/api/todos/[id]">,
+  { params }: RouteContext<"/api/todos/[todoId]">,
 ) {
-  const { id } = await params;
+  const { todoId } = await params;
 
   try {
-    const res = await fetch(`${BACKEND_URL}/todos/${id}`, {
+    const res = await fetch(`${BACKEND_URL}/todos/${todoId}`, {
       method: "DELETE",
     });
 

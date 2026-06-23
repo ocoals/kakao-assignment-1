@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 
 import { lobster } from "../../fonts";
-import TodoForm from "./TodoForm";
+import TodoForm from "../_components/TodoForm";
 
 // 새 할 일 생성 페이지 (Server 껍데기 + Client 폼)
 export default function NewTodoPage() {
@@ -24,7 +24,7 @@ export default function NewTodoPage() {
 
         {/* useSearchParams를 쓰는 클라이언트 폼은 Suspense로 감싼다 (Next 빌드 요구) */}
         <Suspense>
-          <TodoForm />
+          <TodoForm redirectToList />
         </Suspense>
       </div>
     </div>

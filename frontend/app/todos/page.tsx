@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 
 import { getTodos } from "./actions";
 import { formatDateKey } from "./date";
@@ -7,7 +8,7 @@ import TodoItem from "./_components/TodoItem";
 import FilterTabs from "./_components/FilterTabs";
 import SearchBox from "./_components/SearchBox";
 import WeekStrip from "./_components/WeekStrip";
-import AddTodoForm from "./_components/AddTodoForm";
+import TodoForm from "./_components/TodoForm";
 
 // 할 일 목록 페이지 (Server Component).
 // searchParams의 date/filter/search를 읽어 서버에서 필터링된 목록을 받아 렌더한다.
@@ -39,10 +40,20 @@ export default async function TodosPage({
 
         <WeekStrip todos={allTodos} selectedDate={selectedDate} />
 
-        {/* 2차 방식 인라인 추가 폼 (별도 /todos/new 페이지도 URL로 접근 가능) */}
+        {/* 인라인 추가 폼 (공용 TodoForm — 머무름 모드) */}
         <Suspense>
-          <AddTodoForm />
+          <TodoForm />
         </Suspense>
+
+        {/* 별도 생성 페이지로 가는 보조 링크 (과제 필수 페이지) */}
+        <div className="mt-2 text-right">
+          <Link
+            href={`/todos/new?date=${selectedDate}`}
+            className="text-[13px] text-brand hover:underline"
+          >
+            별도 페이지에서 추가 →
+          </Link>
+        </div>
 
         {/* useSearchParams를 쓰는 클라이언트 컴포넌트는 Suspense로 감싼다 (Next 빌드 요구) */}
         <Suspense>
