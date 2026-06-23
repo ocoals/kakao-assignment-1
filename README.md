@@ -5,11 +5,14 @@ Next.js 프론트엔드와 FastAPI 백엔드로 구성된 할 일 관리 웹 앱
 ## 기능
 
 - **할 일 CRUD** — 추가 / 수정 / 완료 토글 / 삭제
+- **날짜별 관리** — 주간 캘린더(WeekStrip)에서 날짜 선택, 선택 날짜 항목만 표시, 이전·다음 주 이동. 선택 날짜는 URL `?date=`로 관리 (새로고침·공유 후 유지)
 - **서버 기반 필터** — 전체 / 진행중 / 완료 (URL 파라미터 `?filter=`)
 - **서버 기반 검색** — 텍스트 부분 일치 (URL 파라미터 `?search=`)
-- **필터+검색 동시 적용** — `?filter=active&search=키워드` 교집합 결과
+- **필터+검색+날짜 동시 적용** — `?date=2026-06-24&filter=active&search=키워드` AND 결합, 교집합 결과
 - **검색 디바운스** — 입력 후 약 300ms 정지 시점에 1회 갱신
-- **URL 파라미터 유지** — 새로고침/공유 후에도 필터·검색 상태 복구
+- **URL 파라미터 유지** — 새로고침/공유 후에도 날짜·필터·검색 상태 복구
+- **인라인 추가 폼** — 목록 화면에서 바로 추가 (제출 후 페이지 이동 없음) + 별도 `/todos/new` 페이지 병행
+- **할 일 항목 토글** — 체크박스로 완료/취소
 
 ## 기술 스택
 
@@ -70,12 +73,12 @@ Server Component (page.tsx)
     ↓ getTodos() [actions.ts]
     ↓ (cache: "no-store" — 항상 최신 데이터)
     ↓
-FastAPI: GET /todos?filter=...&search=...
+FastAPI: GET /todos?date=...&filter=...&search=...
     ↓
-SQLite DB (필터링·검색 수행)
+SQLite DB (날짜·필터·검색 모두 AND 적용)
 ```
 
-**특징:** Server Component에서 `actions.ts`의 `getTodos()`를 직접 호출. 캐시를 사용하지 않으므로 재렌더될 때마다 최신 데이터를 가져옵니다.
+**특징:** Server Component에서 `actions.ts`의 `getTodos(date, filter, search)`를 직접 호출. 캐시를 사용하지 않으므로 재렌더될 때마다 최신 데이터를 가져옵니다. date 파라미터가 없으면 오늘 날짜 기본값으로 사용.
 
 ### 쓰기 (생성/수정/삭제)
 
@@ -119,12 +122,13 @@ DATABASE_URL=sqlite:///./todos.db
 
 | 메서드 | 경로 | 설명 |
 |--------|------|------|
-| `GET` | `/todos?filter=all\|active\|completed&search=` | 할 일 목록 조회 (필터/검색 적용) |
-| `POST` | `/todos` | 할 일 생성 (`{ "text": "..." }`) |
+| `GET` | `/todos?date=&filter=all\|active\|completed&search=` | 할 일 목록 조회 (날짜/필터/검색 적용) |
+| `POST` | `/todos` | 할 일 생성 (`{ "text": "...", "date": "YYYY-MM-DD" }`) |
 | `PUT` | `/todos/{id}` | 할 일 부분 수정 (`{ "text"?: "...", "completed"?: true/false }`) |
 | `DELETE` | `/todos/{id}` | 할 일 삭제 |
 
 **쿼리 파라미터:**
+- `date` — 해당 날짜 항목만 조회 (YYYY-MM-DD 형식, 로컬 기준). 미지정 시 전체 (서버는 날짜 필터 미적용).
 - `filter` — `all` (기본) / `active` (진행중) / `completed` (완료). 미지정 또는 비정상값 시 `all`로 폴백.
 - `search` — 텍스트 부분 일치 (LIKE '%...%'). 공백만 입력 시 무시.
 
@@ -157,12 +161,15 @@ todo-vanilla/
 │   │   ├── todos/
 │   │   │   ├── page.tsx         # 할 일 목록 (Server Component)
 │   │   │   ├── actions.ts       # 읽기 헬퍼 (getTodos)
+│   │   │   ├── date.ts          # 날짜 유틸 (formatDateKey, parseDateKey, getWeekDates, addWeeks)
 │   │   │   ├── loading.tsx      # 로딩 스켈레톤
 │   │   │   ├── error.tsx        # 에러 폴백
 │   │   │   ├── types.ts         # Todo 타입 정의
 │   │   │   │
 │   │   │   ├── _components/
-│   │   │   │   ├── TodoItem.tsx       # 목록 항목 (토글/삭제)
+│   │   │   │   ├── TodoItem.tsx       # 목록 항목 (체크박스 토글/삭제)
+│   │   │   │   ├── WeekStrip.tsx      # 주간 날짜 바 (Client, 날짜 선택, 이전·다음 주)
+│   │   │   │   ├── AddTodoForm.tsx    # 인라인 추가 폼 (Client, 제출 후 새로고침만)
 │   │   │   │   ├── FilterTabs.tsx     # 필터 탭
 │   │   │   │   └── SearchBox.tsx      # 검색창
 │   │   │   │
@@ -178,6 +185,8 @@ todo-vanilla/
 │   │       ├── route.ts               # POST /api/todos (프록시)
 │   │       └── [id]/route.ts          # PUT/DELETE /api/todos/[id] (프록시)
 │   │
+│   ├── fonts.ts                 # Lobster 제목 폰트 (page.tsx의 "Todo List" 제목용)
+│   │
 │   └── public/
 │
 ├── backend/                     # FastAPI 백엔드
@@ -185,16 +194,31 @@ todo-vanilla/
 │   ├── .env.local (git 제외)
 │   ├── .gitignore
 │   │
-│   ├── main.py                  # FastAPI 앱 + CRUD 엔드포인트
+│   ├── main.py                  # FastAPI 앱 + CRUD 엔드포인트 (GET/POST/PUT/DELETE /todos, 날짜·필터·검색 처리)
 │   ├── database.py              # SQLAlchemy 엔진/세션/Base
-│   ├── models.py                # Todo ORM 모델
-│   └── schemas.py               # Pydantic 스키마 (TodoCreate/TodoUpdate/TodoRead)
+│   ├── models.py                # Todo ORM 모델 (id, text, completed, date)
+│   └── schemas.py               # Pydantic 스키마 (TodoCreate(text, date)/TodoUpdate/TodoRead)
 │
 └── docs/
     └── PLAN.md                  # 과제3 구현 계획
 ```
 
 ## 주요 설계 결정
+
+### 날짜 모델과 URL 관리
+
+- **Todo 필드:** `{id: int, text: str, completed: bool, date: str}` — date는 "YYYY-MM-DD" 로컬 문자열 (시간·타임존 없음)
+- **날짜별 필터링:** GET /todos에 ?date= 쿼리 파라미터 추가. 지정 시 해당 날짜만, 미지정 시 전체.
+- **URL 관리:** 선택 날짜는 ?date= 파라미터로 유지. 새로고침·공유 후에도 복구.
+- **기본값:** page.tsx에서 ?date= 없으면 formatDateKey(new Date()) (오늘 날짜) 자동 설정.
+- **WeekStrip:** Client 컴포넌트. 주간 7일을 표시, 각 날짜 우측에 할 일 개수 표시, 날짜 선택 시 URL ?date=만 갱신 (filter/search는 보존).
+
+### 인라인 추가 폼
+
+- **AddTodoForm.tsx:** Client 컴포넌트, 목록 화면 안에서 할 일 추가 (2차 방식).
+- **제출 후:** 입력 필드 비우고 router.refresh()만 호출 (페이지 이동 없음).
+- **날짜:** 현재 보고 있는 ?date= 파라미터에 추가. ?date= 없으면 오늘.
+- **별도 페이지:** /todos/new 페이지는 여전히 존재하며 URL로 접근 가능 (제출 후 /todos로 이동).
 
 ### 읽기 = `actions.ts`, 쓰기 = `route.ts`
 
@@ -231,13 +255,16 @@ POST 요청 본문에 id를 포함하지 않으며, 서버가 생성해 응답.
 
 다음 항목들이 구현 확인 기준:
 
-- [ ] 두 서버 동시 기동 후 `/todos` 접속 → 할 일 목록 렌더
+- [ ] 두 서버 동시 기동 후 `/todos` 접속 → 할 일 목록 렌더 (기본값: 오늘 날짜)
+- [ ] WeekStrip 표시 → 현재 주(월~일) 7일, 각 날짜의 할 일 개수, 이전·다음 주 버튼
+- [ ] 날짜 선택 → URL에 `?date=YYYY-MM-DD` 추가, 해당 날짜 항목만 표시, 새로고침 후 유지
+- [ ] 인라인 추가 폼 (AddTodoForm) → 목록 안에서 할 일 추가, 제출 후 페이지 이동 없음
 - [ ] 새 할 일 생성 → 새로고침 없이 목록에 노출
-- [ ] 완료 토글/삭제 → 새로고침 없이 즉시 반영
+- [ ] 완료 토글 (체크박스) / 삭제 → 새로고침 없이 즉시 반영
 - [ ] 할 일 수정 페이지 진입 → 기존 텍스트 prefill
-- [ ] 필터 탭 클릭 → URL에 `?filter=` 추가, 새로고침 후 유지
-- [ ] 검색 입력 → ~300ms 후 1회 갱신, URL에 `?search=` 추가
-- [ ] 필터+검색 동시 → `?filter=active&search=...` URL, 교집합 결과
+- [ ] 필터 탭 클릭 → URL에 `?filter=` 추가, ?date=는 보존, 새로고침 후 유지
+- [ ] 검색 입력 → ~300ms 후 1회 갱신, URL에 `?search=` 추가, ?date=·?filter=는 보존
+- [ ] 필터+검색+날짜 동시 → `?date=2026-06-24&filter=active&search=...` URL, 3개 조건 AND 적용
 - [ ] 백엔드 끄기 → `error.tsx` 폴백 표시
 - [ ] 쓰기 실패 → 컴포넌트 내 인라인 에러 문구 표시
 
