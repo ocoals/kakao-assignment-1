@@ -1,26 +1,25 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* 2차 과제 디자인 토큰 (보라 테마). Tailwind v4 @theme로 색상 유틸을 생성한다. */
+@theme {
+  --color-brand: #672be0;
+  --color-brand-hover: #5722c4;
+  --color-brand-soft: #efeafb;
+  --color-surface: #f5f4fa;
+  --color-ink: #2c2c34;
+  --color-subtle: #9a98a8;
+  --color-line: #e5e3ef;
+  --color-danger: #e04b4b;
+  --color-danger-soft: #fdeaea;
 }
 
+/* 본문 폰트는 next/font(Geist) 변수 매핑을 유지한다. */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-surface);
+  color: var(--color-ink);
 }

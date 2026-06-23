@@ -10,17 +10,19 @@ export default function Error({
   unstable_retry: () => void;
 }) {
   return (
-    <main className="mx-auto max-w-xl p-6">
-      <h2 className="text-lg font-semibold">문제가 발생했습니다</h2>
-      <p className="mt-2 text-sm text-gray-600">
-        할 일 목록을 불러오지 못했습니다. 잠시 후 다시 시도하세요.
-      </p>
-      <button
-        onClick={() => unstable_retry()}
-        className="mt-4 rounded bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-700"
-      >
-        다시 시도
-      </button>
-    </main>
+    <div className="flex min-h-screen justify-center bg-surface px-5 py-15">
+      <div className="w-full max-w-120 rounded-3xl bg-white p-8 shadow-[0_20px_50px_rgba(103,43,224,0.12)]">
+        <h2 className="text-lg font-semibold text-ink">문제가 발생했습니다</h2>
+        <p className="mt-2 text-sm text-subtle">
+          할 일 목록을 불러오지 못했습니다. 잠시 후 다시 시도하세요.
+        </p>
+        <button
+          onClick={() => unstable_retry()}
+          className="mt-4 rounded bg-brand px-4 py-2 text-sm text-white hover:bg-brand-hover"
+        >
+          다시 시도
+        </button>
+      </div>
+    </div>
   );
 }

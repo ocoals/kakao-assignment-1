@@ -8,7 +8,7 @@ const TABS = [
   { value: "completed", label: "완료" },
 ] as const;
 
-// 필터 탭. 클릭 시 URL의 filter 파라미터만 변경한다(search는 보존 → 공존 보장).
+// 필터 탭. 클릭 시 URL의 filter 파라미터만 변경한다(date·search는 보존).
 export default function FilterTabs() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -27,15 +27,15 @@ export default function FilterTabs() {
   }
 
   return (
-    <div className="flex gap-2">
+    <div className="mt-4 flex gap-1.5">
       {TABS.map((tab) => (
         <button
           key={tab.value}
           onClick={() => selectFilter(tab.value)}
-          className={`rounded px-3 py-1 text-sm ${
+          className={`flex-1 rounded-full py-2.5 text-sm font-medium ${
             current === tab.value
-              ? "bg-gray-900 text-white"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              ? "bg-brand text-white"
+              : "bg-brand-soft text-brand"
           }`}
         >
           {tab.label}

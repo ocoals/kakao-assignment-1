@@ -34,7 +34,7 @@ export default function SearchBox() {
       onChange={(e) => setValue(e.target.value)}
       aria-label="검색"
       placeholder="검색"
-      className="rounded border border-gray-300 px-3 py-2"
+      className="w-full rounded-[10px] border-[1.5px] border-line px-3.5 py-3 text-[15px] outline-none focus:border-brand"
     />
   );
 }

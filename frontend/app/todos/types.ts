@@ -3,4 +3,5 @@ export type Todo = {
   id: number;
   text: string;
   completed: boolean;
+  date: string; // "YYYY-MM-DD" (로컬 기준 날짜 키)
 };

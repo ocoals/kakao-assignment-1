@@ -7,11 +7,13 @@ import { formatDateKey } from "../date";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-// 할 일 생성 폼. 빈/공백 입력은 거부하고, 제출 성공 후 그 날짜의 목록으로 돌아간다.
-export default function TodoForm() {
+// 목록 화면 안에서 바로 추가하는 인라인 폼 (2차 방식).
+// 별도 페이지(new/TodoForm)와 달리 제출 후 페이지 이동 없이,
+// 입력을 비우고 router.refresh()로 그 자리에서 목록만 갱신한다.
+export default function AddTodoForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  // ?date= 로 넘어온 날짜에 추가한다. 없으면 오늘.
+  // 현재 보고 있는 날짜에 추가한다. ?date= 없으면 오늘.
   const date = searchParams.get("date") ?? formatDateKey(new Date());
 
   const [text, setText] = useState("");
@@ -36,16 +38,16 @@ export default function TodoForm() {
         body: JSON.stringify({ text: text.trim(), date }),
       });
       if (!res.ok) throw new Error();
-      // 순서 고정: refresh로 서버 데이터 무효화 → push로 그 날짜의 목록 이동
+      // 페이지 이동 없이: 입력 비우고 목록만 새로고침
+      setText("");
       router.refresh();
-      router.push(`/todos?date=${date}`);
     } catch {
       setError(true);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+    <form onSubmit={handleSubmit}>
       <div className="flex gap-2">
         <input
           type="text"
@@ -62,11 +64,9 @@ export default function TodoForm() {
           추가
         </button>
       </div>
-      {empty && (
-        <p className="text-[13px] text-brand">할 일을 입력해 주세요.</p>
-      )}
+      {empty && <p className="mt-2.5 text-[13px] text-brand">할 일을 입력해 주세요.</p>}
       {error && (
-        <p className="text-[13px] text-danger">
+        <p className="mt-2.5 text-[13px] text-danger">
           저장에 실패했습니다. 다시 시도하세요.
         </p>
       )}

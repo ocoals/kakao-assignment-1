@@ -8,10 +8,15 @@ import type { Todo } from "./types";
 // 서버 → FastAPI 직접 호출용 베이스 URL (브라우저에 노출되지 않음)
 const BACKEND_URL = process.env.BACKEND_URL;
 
-// 할 일 목록 조회. filter/search는 그대로 FastAPI 쿼리 파라미터로 전달한다.
+// 할 일 목록 조회. date/filter/search를 그대로 FastAPI 쿼리 파라미터로 전달한다.
 // no-store: 캐시에 저장하지 않아 재렌더될 때마다 항상 최신 목록을 가져온다.
-export async function getTodos(filter?: string, search?: string): Promise<Todo[]> {
+export async function getTodos(
+  date?: string,
+  filter?: string,
+  search?: string,
+): Promise<Todo[]> {
   const params = new URLSearchParams();
+  if (date) params.set("date", date);
   if (filter) params.set("filter", filter);
   if (search) params.set("search", search);
 
