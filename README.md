@@ -86,7 +86,7 @@ SQLite DB (날짜·필터·검색 모두 AND 적용)
 Client Component (TodoItem/TodoForm)
     ↓ fetch() [NEXT_PUBLIC_API_URL/todos*]
     ↓
-Next.js Route Handler (app/api/todos/route.ts 또는 [id]/route.ts)
+Next.js Route Handler (app/api/todos/route.ts 또는 [todoId]/route.ts)
     ↓ fetch() [BACKEND_URL/todos*]
     ↓
 FastAPI (쓰기 처리)
@@ -169,21 +169,20 @@ todo-vanilla/
 │   │   │   ├── _components/
 │   │   │   │   ├── TodoItem.tsx       # 목록 항목 (체크박스 토글/삭제)
 │   │   │   │   ├── WeekStrip.tsx      # 주간 날짜 바 (Client, 날짜 선택, 이전·다음 주)
-│   │   │   │   ├── AddTodoForm.tsx    # 인라인 추가 폼 (Client, 제출 후 새로고침만)
+│   │   │   │   ├── TodoForm.tsx       # 추가 폼(공용) (Client, redirectToList prop으로 분기)
 │   │   │   │   ├── FilterTabs.tsx     # 필터 탭
 │   │   │   │   └── SearchBox.tsx      # 검색창
 │   │   │   │
 │   │   │   ├── new/
-│   │   │   │   ├── page.tsx           # 생성 페이지
-│   │   │   │   └── TodoForm.tsx       # 생성 폼
+│   │   │   │   └── page.tsx           # 생성 페이지
 │   │   │   │
-│   │   │   └── [id]/
+│   │   │   └── [todoId]/
 │   │   │       ├── page.tsx           # 수정 페이지
 │   │   │       └── EditForm.tsx       # 수정 폼
 │   │   │
 │   │   └── api/todos/
 │   │       ├── route.ts               # POST /api/todos (프록시)
-│   │       └── [id]/route.ts          # PUT/DELETE /api/todos/[id] (프록시)
+│   │       └── [todoId]/route.ts          # PUT/DELETE /api/todos/[todoId] (프록시)
 │   │
 │   ├── fonts.ts                 # Lobster 제목 폰트 (page.tsx의 "Todo List" 제목용)
 │   │
@@ -213,12 +212,12 @@ todo-vanilla/
 - **기본값:** page.tsx에서 ?date= 없으면 formatDateKey(new Date()) (오늘 날짜) 자동 설정.
 - **WeekStrip:** Client 컴포넌트. 주간 7일을 표시, 각 날짜 우측에 할 일 개수 표시, 날짜 선택 시 URL ?date=만 갱신 (filter/search는 보존).
 
-### 인라인 추가 폼
+### 추가 폼 (통합)
 
-- **AddTodoForm.tsx:** Client 컴포넌트, 목록 화면 안에서 할 일 추가 (2차 방식).
-- **제출 후:** 입력 필드 비우고 router.refresh()만 호출 (페이지 이동 없음).
+- **TodoForm.tsx:** Client 컴포넌트, redirectToList prop으로 두 모드 분기.
+  - **인라인 모드** (`redirectToList=false`, 기본값) — 목록 화면 안에서 할 일 추가. 제출 후 입력 필드 비우고 router.refresh()만 (페이지 이동 없음).
+  - **페이지 모드** (`redirectToList=true`) — /todos/new 페이지에서 호출. 제출 후 router.refresh() → router.push("/todos") (페이지로 이동).
 - **날짜:** 현재 보고 있는 ?date= 파라미터에 추가. ?date= 없으면 오늘.
-- **별도 페이지:** /todos/new 페이지는 여전히 존재하며 URL로 접근 가능 (제출 후 /todos로 이동).
 
 ### 읽기 = `actions.ts`, 쓰기 = `route.ts`
 
@@ -240,11 +239,11 @@ todo-vanilla/
 
 ### 동적 세그먼트 통일
 
-페이지와 API 라우트 모두 `[id]`로 동일하게 사용:
-- `app/todos/[id]/page.tsx` (수정 페이지)
-- `app/api/todos/[id]/route.ts` (PUT/DELETE 프록시)
+페이지와 API 라우트 모두 `[todoId]`로 동일하게 사용:
+- `app/todos/[todoId]/page.tsx` (수정 페이지)
+- `app/api/todos/[todoId]/route.ts` (PUT/DELETE 프록시)
 
-`const { id } = await params` 패턴으로 일관 추출.
+`const { todoId } = await params` 패턴으로 일관 추출.
 
 ### 정수 ID (Integer PK)
 
@@ -258,7 +257,7 @@ POST 요청 본문에 id를 포함하지 않으며, 서버가 생성해 응답.
 - [ ] 두 서버 동시 기동 후 `/todos` 접속 → 할 일 목록 렌더 (기본값: 오늘 날짜)
 - [ ] WeekStrip 표시 → 현재 주(월~일) 7일, 각 날짜의 할 일 개수, 이전·다음 주 버튼
 - [ ] 날짜 선택 → URL에 `?date=YYYY-MM-DD` 추가, 해당 날짜 항목만 표시, 새로고침 후 유지
-- [ ] 인라인 추가 폼 (AddTodoForm) → 목록 안에서 할 일 추가, 제출 후 페이지 이동 없음
+- [ ] 인라인 추가 폼 (TodoForm) → 목록 안에서 할 일 추가, 제출 후 페이지 이동 없음
 - [ ] 새 할 일 생성 → 새로고침 없이 목록에 노출
 - [ ] 완료 토글 (체크박스) / 삭제 → 새로고침 없이 즉시 반영
 - [ ] 할 일 수정 페이지 진입 → 기존 텍스트 prefill

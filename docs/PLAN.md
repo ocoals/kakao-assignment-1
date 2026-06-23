@@ -156,12 +156,11 @@ deep-interview + 합의(consensus) 과정에서 확정한 핵심 결정과 **기
 | `frontend/app/todos/actions.ts` | 읽기 헬퍼 `getTodos(date, filter, search)` (no-store) |
 | `frontend/app/todos/date.ts` | 날짜 유틸 순수함수 (formatDateKey/parseDateKey/getWeekDates/addWeeks) |
 | `frontend/app/api/todos/route.ts` | POST 프록시 |
-| `frontend/app/api/todos/[id]/route.ts` | PUT/DELETE 프록시 |
+| `frontend/app/api/todos/[todoId]/route.ts` | PUT/DELETE 프록시 |
 | `frontend/app/todos/_components/WeekStrip.tsx` | 주간 날짜 바 (URL `?date=`, 날짜별 개수) |
-| `frontend/app/todos/_components/AddTodoForm.tsx` | 인라인 추가 폼 (제출 후 router.refresh만, 머무름) |
+| `frontend/app/todos/_components/TodoForm.tsx` | 추가 폼(공용) — redirectToList prop으로 분기: false(인라인, 머무름) / true(페이지, 이동) |
 | `frontend/app/todos/_components/TodoItem.tsx` | 체크박스 토글/삭제 (router.refresh) |
-| `frontend/app/todos/new/TodoForm.tsx` | 생성 페이지 폼 (router.refresh → push) |
-| `frontend/app/todos/[id]/EditForm.tsx` | 수정 (router.refresh → push) |
+| `frontend/app/todos/[todoId]/EditForm.tsx` | 수정 (router.refresh → push) |
 | `frontend/app/todos/_components/FilterTabs.tsx` | 필터 탭 (URLSearchParams 복제) |
 | `frontend/app/todos/_components/SearchBox.tsx` | 검색 (디바운스) |
 | `frontend/app/fonts.ts` | 제목 Lobster 폰트 (2차 보라 테마) |
