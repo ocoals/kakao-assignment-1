@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, field_validator
 
 class TodoCreate(BaseModel):
     text: str
+    date: str  # 날짜 문자열(로컬), 시간/타임존 없음. 형식: "YYYY-MM-DD"
 
     @field_validator("text")
     @classmethod
@@ -35,5 +36,6 @@ class TodoRead(BaseModel):
     id: int
     text: str
     completed: bool
+    date: str  # 날짜 문자열(로컬), 시간/타임존 없음. 형식: "YYYY-MM-DD"
 
     model_config = ConfigDict(from_attributes=True)

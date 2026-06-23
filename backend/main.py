@@ -36,9 +36,10 @@ def get_db():
 def list_todos(
     filter: Optional[str] = None,
     search: Optional[str] = None,
+    date: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
-    """할 일 목록 조회. filter(all|active|completed)와 search(부분 일치) 적용."""
+    """할 일 목록 조회. filter(all|active|completed), search(부분 일치), date(YYYY-MM-DD) 적용."""
     query = db.query(Todo)
 
     # filter 처리: all|active|completed 외 값은 all로 폴백
@@ -52,13 +53,17 @@ def list_todos(
     if search and search.strip():
         query = query.filter(Todo.text.like(f"%{search.strip()}%"))
 
+    # date 처리: 지정 시 해당 날짜만, 미지정이면 전체
+    if date and date.strip():
+        query = query.filter(Todo.date == date.strip())
+
     return query.all()
 
 
 @app.post("/todos", response_model=TodoRead, status_code=201)
 def create_todo(body: TodoCreate, db: Session = Depends(get_db)):
     """할 일 생성. completed는 항상 False로 시작."""
-    todo = Todo(text=body.text, completed=False)
+    todo = Todo(text=body.text, completed=False, date=body.date)
     db.add(todo)
     db.commit()
     db.refresh(todo)
