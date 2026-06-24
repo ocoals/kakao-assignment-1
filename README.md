@@ -150,8 +150,9 @@ todo-vanilla/
 ├── frontend/                    # Next.js 프론트엔드
 │   ├── package.json
 │   ├── tsconfig.json
-│   ├── next.config.js
-│   ├── tailwind.config.ts
+│   ├── next.config.ts
+│   ├── postcss.config.mjs
+│   ├── eslint.config.mjs
 │   ├── .env.local (git 제외)
 │   │
 │   ├── app/
