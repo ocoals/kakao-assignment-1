@@ -108,7 +108,8 @@ deep-interview + 합의(consensus) 과정에서 확정한 핵심 결정과 **기
 ### 이후 변경 (구현 후 요청 반영)
 초기 계획은 **평평한 리스트 + 별도 추가 페이지**였으나, 2차 디자인을 가져오며 다음을 반영:
 - **날짜 모델(WeekStrip) 복원** — Todo에 `date` 추가, 날짜별 관리 (위 1번).
-- **인라인 추가 폼 추가** — 목록 화면에서 바로 추가(2차 방식). 별도 `/todos/new` 페이지도 유지(과제 요구).
+- **인라인 추가 폼 단일화** — 목록 화면에서 바로 추가(2차 방식). 이후 별도 `/todos/new` 페이지를 제거하고 인라인 폼으로 단일화 (UX: 추가 행위를 목록 한 곳으로).
+- **`useSetParam` 훅 추출** — URL 파라미터 갱신 로직(`URLSearchParams` 복제 → 키 하나 set/delete → `router.push`)이 FilterTabs/SearchBox/WeekStrip 3개 컴포넌트에 중복돼 DRY 원칙으로 `_hooks/useSetParam.ts`로 추출.
 - **완료 토글: 완료/취소 버튼 → 체크박스**.
 
 ## 요구사항 원점
@@ -132,7 +133,7 @@ deep-interview + 합의(consensus) 과정에서 확정한 핵심 결정과 **기
 - [x] `/` → `/todos` redirect.
 - [x] `/todos`는 Server Component (JS 비활성 상태에서도 HTML 렌더).
 - [x] 주간 스트립(WeekStrip)에서 날짜 선택 → 해당 날짜 할 일만 표시, URL `?date=` 유지.
-- [x] 인라인 폼으로 추가 → 페이지 이동 없이 그 날짜 목록에 노출. 별도 `/todos/new` 페이지도 동작.
+- [x] 인라인 폼으로 추가 → 페이지 이동 없이 그 날짜 목록에 노출.
 - [x] 생성 후 새로고침 없이 목록 갱신 (네트워크 탭: GET /todos 재요청 1건).
 - [x] 체크박스 토글/삭제 후 새로고침 없이 즉시 반영.
 - [x] 수정 페이지 진입 시 text prefill.
@@ -158,7 +159,8 @@ deep-interview + 합의(consensus) 과정에서 확정한 핵심 결정과 **기
 | `frontend/app/api/todos/route.ts` | POST 프록시 |
 | `frontend/app/api/todos/[todoId]/route.ts` | PUT/DELETE 프록시 |
 | `frontend/app/todos/_components/WeekStrip.tsx` | 주간 날짜 바 (URL `?date=`, 날짜별 개수) |
-| `frontend/app/todos/_components/TodoForm.tsx` | 추가 폼(공용) — redirectToList prop으로 분기: false(인라인, 머무름) / true(페이지, 이동) |
+| `frontend/app/todos/_components/TodoForm.tsx` | 인라인 추가 폼 전용 — 제출 후 입력 비우고 router.refresh()만 (페이지 이동 없음) |
+| `frontend/app/todos/_hooks/useSetParam.ts` | URL 파라미터 갱신 훅 — 현재 쿼리 복제 → 키 하나 set/delete → router.push. FilterTabs/SearchBox/WeekStrip 공통 사용 |
 | `frontend/app/todos/_components/TodoItem.tsx` | 체크박스 토글/삭제 (router.refresh) |
 | `frontend/app/todos/[todoId]/EditForm.tsx` | 수정 (router.refresh → push) |
 | `frontend/app/todos/_components/FilterTabs.tsx` | 필터 탭 (URLSearchParams 복제) |

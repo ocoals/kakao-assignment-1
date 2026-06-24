@@ -13,7 +13,7 @@ Next.js 16 App Router 프론트엔드와 FastAPI 백엔드로 구성된 할 일 
 - 쓰기 = Client Component + route.ts 프록시 → FastAPI
 - 서버 기반 날짜·필터(`?filter=`) + 검색(`?search=`) + 디바운스
 - 날짜·필터·검색 동시 적용 + URL 파라미터 유지
-- 인라인 추가 폼 (목록 화면에서 추가, 제출 후 페이지 이동 없음) + 별도 /todos/new 페이지 병행
+- 인라인 추가 폼 (목록 화면에서 추가, 제출 후 페이지 이동 없음, 유일한 추가 경로)
 
 ## Key Files
 
@@ -23,18 +23,18 @@ Next.js 16 App Router 프론트엔드와 FastAPI 백엔드로 구성된 할 일 
 | **backend/database.py** | SQLAlchemy 엔진/세션/Base. `.env.local`에서 DATABASE_URL 읽음. |
 | **backend/models.py** | SQLAlchemy 모델 `Todo(id: int PK, text: str, completed: bool, date: str)`. date는 "YYYY-MM-DD" 로컬 문자열. |
 | **backend/schemas.py** | Pydantic v2 스키마. `TodoCreate(text, date)` 공백 검증, `TodoUpdate`(Optional 필드), `TodoRead`. |
-| **frontend/app/todos/page.tsx** | 할 일 목록 Server Component. searchParams(date/filter/search) await → getTodos() → 필터 결과 렌더. WeekStrip + TodoForm(인라인, redirectToList=false) 포함. |
+| **frontend/app/todos/page.tsx** | 할 일 목록 Server Component. searchParams(date/filter/search) await → getTodos() → 필터 결과 렌더. WeekStrip + TodoForm(인라인) 포함. |
 | **frontend/app/todos/actions.ts** | 읽기 헬퍼. `getTodos(date, filter, search)`: BACKEND_URL로 FastAPI 직접 호출, cache: no-store. "use server" 붙이지 않음 (Server Action 아님). |
 | **frontend/app/todos/date.ts** | 날짜 유틸 (순수 함수). formatDateKey(Date→"YYYY-MM-DD"), parseDateKey("YYYY-MM-DD"→Date), getWeekDates(Date→[Mon~Sun]), addWeeks(Date, n→Date±n주). |
-| **frontend/app/todos/_components/WeekStrip.tsx** | Client. 주간 날짜 바. 현재 주 7일, 각 날짜 우측에 할 일 개수, 이전·다음 주 버튼. 날짜 선택 시 URL ?date= 갱신 (filter/search 보존). |
-| **frontend/app/todos/_components/TodoForm.tsx** | Client. 추가 폼(공용). redirectToList prop으로 분기: false(기본, 인라인 모드—입력만 비우고 머무름) / true(페이지 모드—목록으로 이동). 현재 ?date=에 추가 (없으면 오늘). |
+| **frontend/app/todos/_components/WeekStrip.tsx** | Client. 주간 날짜 바. 현재 주 7일, 각 날짜 우측에 할 일 개수, 이전·다음 주 버튼. 날짜 선택 시 useSetParam으로 URL ?date= 갱신 (filter/search 보존). useRouter/useSearchParams 직접 import 안 함. |
+| **frontend/app/todos/_components/TodoForm.tsx** | Client. 인라인 추가 폼 전용. 제출 후 입력 필드 비우고 router.refresh()만 호출 (페이지 이동 없음). 현재 ?date=에 추가 (없으면 오늘). |
 | **frontend/app/api/todos/route.ts** | POST 프록시. 클라 → 이 핸들러 → FastAPI POST. 성공 후 revalidatePath("/todos"). |
 | **frontend/app/api/todos/[todoId]/route.ts** | PUT/DELETE 프록시. 동적 세그먼트 [todoId]. `const { todoId } = await params` (Promise await). 성공 후 revalidatePath. |
 | **frontend/app/todos/_components/TodoItem.tsx** | Client. 체크박스 토글/삭제. 성공 후 router.refresh() (이미 /todos에 머무름). 실패는 try/catch + 인라인 UI. |
-| **frontend/app/todos/new/page.tsx** | Client 폼 컨테이너. TodoForm(redirectToList=true, 페이지 모드)를 호출. 성공 후 목록으로 이동. |
 | **frontend/app/todos/[todoId]/EditForm.tsx** | Client. 수정 폼. 성공 후 router.refresh() → router.push("/todos"). |
-| **frontend/app/todos/_components/FilterTabs.tsx** | Client. 필터 탭. URLSearchParams 복제 후 filter key만 set/delete → router.push (date/search 파라미터 보존). |
-| **frontend/app/todos/_components/SearchBox.tsx** | Client. 검색창. ~300ms 디바운스, URLSearchParams 복제 후 search key만 set/delete. 빈 입력 시 delete (date/filter 보존). |
+| **frontend/app/todos/_components/FilterTabs.tsx** | Client. 필터 탭. useSetParam으로 filter key만 set/delete → router.push (date/search 파라미터 보존). |
+| **frontend/app/todos/_components/SearchBox.tsx** | Client. 검색창. ~300ms 디바운스, useSetParam으로 search key만 set/delete. 빈 입력 시 delete (date/filter 보존). |
+| **frontend/app/todos/_hooks/useSetParam.ts** | Client 훅. 현재 쿼리 복제 → 키 하나만 set/delete → router.push('/todos?...'). FilterTabs/SearchBox/WeekStrip이 공통 사용. |
 | **frontend/app/fonts.ts** | Lobster 제목 폰트 로드 (page.tsx의 "Todo List" 제목용). |
 | **frontend/.env.local** | NEXT_PUBLIC_API_URL(클라 fetch 베이스), BACKEND_URL(서버→FastAPI 베이스). |
 | **backend/.env.local** | DATABASE_URL=sqlite:///./todos.db. |
@@ -44,23 +44,24 @@ Next.js 16 App Router 프론트엔드와 FastAPI 백엔드로 구성된 할 일 
 ### Server/Client 경계 명확화
 
 **Server Component / Server-only:**
-- `app/todos/page.tsx` — searchParams(date/filter/search) await → getTodos() → 렌더. WeekStrip + TodoForm(인라인, redirectToList=false, Suspense로 감싼 Client 자식들 포함).
+- `app/todos/page.tsx` — searchParams(date/filter/search) await → getTodos() → 렌더. WeekStrip + TodoForm(인라인, Suspense로 감싼 Client 자식들 포함).
 - `app/todos/actions.ts` — `getTodos(date, filter, search)`: 순수 fetch 헬퍼. "use server" 없음 (Server Component에서 직접 import+호출하는 일반 함수). BACKEND_URL 환경변수 사용. cache: "no-store" — 매번 최신.
-- `app/todos/new/page.tsx`, `app/todos/[todoId]/page.tsx` — 껍데기 Server. 폼은 Client 자식.
+- `app/todos/[todoId]/page.tsx` — 껍데기 Server. 폼은 Client 자식.
 - `app/api/todos/route.ts`, `app/api/todos/[todoId]/route.ts` — Route handler (서버 측). BACKEND_URL로 FastAPI 프록시. revalidatePath("/todos") 호출.
 
 **Client Component ("use client"):**
-- `app/todos/_components/WeekStrip.tsx` — 주간 날짜 바. useRouter + useSearchParams. 날짜 선택 시 URLSearchParams 복제 후 date key만 set (filter/search 보존). router.push(`/todos?${params}`).
-- `app/todos/_components/TodoForm.tsx` — 추가 폼(공용). useRouter + useSearchParams. redirectToList prop으로 분기: false(인라인 모드—입력만 비우고 머무름) / true(페이지 모드—목록으로 이동). 현재 ?date= 읽어 추가 (없으면 오늘).
+- `app/todos/_components/WeekStrip.tsx` — 주간 날짜 바. useSetParam 훅 사용. 날짜 선택 시 date key만 set (filter/search 보존). useRouter/useSearchParams를 직접 import하지 않음.
+- `app/todos/_components/TodoForm.tsx` — 인라인 추가 폼 전용. useRouter + useSearchParams. 제출 후 입력 필드 비우고 router.refresh()만 (페이지 이동 없음). 현재 ?date= 읽어 추가 (없으면 오늘).
 - `app/todos/_components/TodoItem.tsx` — 토글/삭제. `NEXT_PUBLIC_API_URL`로 route handler 호출. 성공 후 `router.refresh()`. 실패는 try/catch + 인라인 에러 (항목 하단에 "저장에 실패했습니다. 다시 시도하세요.").
-- `app/todos/new/page.tsx`, `app/todos/[todoId]/EditForm.tsx` — 페이지 컨테이너/수정 폼. 폼(TodoForm/EditForm)은 Client. `NEXT_PUBLIC_API_URL`로 POST/PUT. 성공 후 `router.refresh()` 다음 `router.push("/todos")` (순서 고정).
-- `app/todos/_components/FilterTabs.tsx`, `app/todos/_components/SearchBox.tsx` — 필터/검색 UI. `useSearchParams` (Suspense로 감싼 후 포함). URLSearchParams 복제 후 자신의 키만 수정 (date·상대 파라미터 보존). router.push(`/todos?...`).
+- `app/todos/[todoId]/EditForm.tsx` — 수정 폼. Client. `NEXT_PUBLIC_API_URL`로 PUT. 성공 후 `router.refresh()` 다음 `router.push("/todos")` (순서 고정).
+- `app/todos/_components/FilterTabs.tsx`, `app/todos/_components/SearchBox.tsx` — 필터/검색 UI. useSetParam 훅 사용 (Suspense로 감싼 후 포함). 자신의 키만 수정 (date·상대 파라미터 보존). router.push(`/todos?...`).
+- `app/todos/_hooks/useSetParam.ts` — URL 파라미터 갱신 훅. 현재 쿼리 복제 → 키 하나만 set/delete → router.push. WeekStrip/FilterTabs/SearchBox 공통 사용.
 
 ### 환경변수 사용처
 
 | 변수 | 접두사 | 사용처 | 용도 |
 |------|--------|---------|------|
-| `NEXT_PUBLIC_API_URL` | `NEXT_PUBLIC_` | Client (TodoItem, TodoForm, EditForm, FilterTabs, SearchBox) — 여기서 TodoForm은 추가 폼(redirectToList prop으로 인라인/페이지 분기) | 클라이언트 fetch의 베이스 URL. `${NEXT_PUBLIC_API_URL}/todos`로 route handler 호출. 브라우저에 노출됨. |
+| `NEXT_PUBLIC_API_URL` | `NEXT_PUBLIC_` | Client (TodoItem, TodoForm, EditForm, FilterTabs, SearchBox) — TodoForm은 인라인 추가 폼 | 클라이언트 fetch의 베이스 URL. `${NEXT_PUBLIC_API_URL}/todos`로 route handler 호출. 브라우저에 노출됨. |
 | `BACKEND_URL` | 없음 | Server (actions.ts, route.ts) | actions.ts의 getTodos() + route handler가 FastAPI를 호출할 때의 베이스 URL. 브라우저에 노출 안 됨. |
 | `DATABASE_URL` | 없음 | Backend 서버 (database.py) | SQLAlchemy 엔진의 DB 연결 문자열. |
 
@@ -139,25 +140,37 @@ export async function PUT(
 ### 날짜·필터·검색 URL 파라미터 관리
 
 **3개 파라미터 공존 보장:**
+
+`useSetParam` 훅이 "현재 쿼리 복제 → 키 하나만 set/delete → router.push" 로직을 캡슐화:
+
 ```typescript
+// _hooks/useSetParam.ts
+"use client";
+import { useRouter, useSearchParams } from "next/navigation";
+
+export function useSetParam() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  return (key: string, value: string | null) => {
+    const params = new URLSearchParams(searchParams);
+    if (value) params.set(key, value);
+    else params.delete(key);
+    const query = params.toString();
+    router.push(`/todos${query ? `?${query}` : ""}`);
+  };
+}
+
 // ✅ WeekStrip: date만 변경 (filter/search 보존)
-const params = new URLSearchParams(searchParams);
-params.set("date", key);  // filter/search는 건드리지 않음
-router.push(`/todos?${params.toString()}`);
+const setParam = useSetParam();
+setParam("date", key);
 
 // ✅ FilterTabs: filter만 변경 (date/search 보존)
-const params = new URLSearchParams(useSearchParams());
-params.set("filter", value);  // date/search는 건드리지 않음
-router.push(`/todos?${params}`);
+const setParam = useSetParam();
+setParam("filter", value);  // 빈값이면 null 전달 → delete
 
 // ✅ SearchBox: search만 변경 (date/filter 보존)
-const params = new URLSearchParams(useSearchParams());
-if (value) {
-  params.set("search", value);
-} else {
-  params.delete("search");  // 빈 입력 시 제거
-}  // date/filter는 건드리지 않음
-router.push(`/todos?${params}`);
+const setParam = useSetParam();
+setParam("search", value || null);  // 빈 입력 시 null → delete
 ```
 
 **❌ 피할 것:**
@@ -272,16 +285,15 @@ curl -X POST http://localhost:8000/todos \
 3. WeekStrip에서 다른 날짜 선택 → URL에 `?date=YYYY-MM-DD` 추가, 해당 날짜 항목만 표시, 새로고침 후 유지.
 4. WeekStrip의 이전/다음 주 버튼 → 주간 변경, 각 버튼 클릭 시 해당 주의 월요일 선택.
 5. 인라인 폼에서 할 일 추가 → **새로고침 없이** 목록에 노출, 입력 필드 비워짐, 선택 날짜로 추가됨.
-6. `/todos/new` 페이지 접속 → 별도 폼, 제출 후 `/todos`로 이동 (페이지 이동 발생).
-7. 목록 항목 체크박스 토글 → **새로고침 없이** 완료 상태 변화.
-8. 삭제 버튼 → **새로고침 없이** 항목 제거.
-9. 항목 클릭 → `/todos/[todoId]` 페이지, text prefill. 수정 → `/todos`로 이동, 변경 반영.
-10. 필터 탭 → URL에 `?filter=...`, ?date= 보존, 새로고침 후 유지.
-11. 검색 입력 → ~300ms 정지 후 `?search=...` 1회 갱신, ?date=·?filter= 보존.
-12. 날짜·필터·검색 동시 → URL에 `?date=2026-06-24&filter=active&search=...`, 3개 조건 AND 적용.
-13. 백엔드 중단 → `/todos` 재접속, `error.tsx` 폴백 + reset 버튼.
-14. 토글/삭제 실패(예: 백엔드 일시 중단) → 컴포넌트 인라인 에러 (error.tsx는 뜨지 않음).
-15. 네트워크 탭에서 클라이언트 → `/api/todos` → 백엔드 흐름 확인.
+6. 목록 항목 체크박스 토글 → **새로고침 없이** 완료 상태 변화.
+7. 삭제 버튼 → **새로고침 없이** 항목 제거.
+8. 항목 클릭 → `/todos/[todoId]` 페이지, text prefill. 수정 → `/todos`로 이동, 변경 반영.
+9. 필터 탭 → URL에 `?filter=...`, ?date= 보존, 새로고침 후 유지.
+10. 검색 입력 → ~300ms 정지 후 `?search=...` 1회 갱신, ?date=·?filter= 보존.
+11. 날짜·필터·검색 동시 → URL에 `?date=2026-06-24&filter=active&search=...`, 3개 조건 AND 적용.
+12. 백엔드 중단 → `/todos` 재접속, `error.tsx` 폴백 + reset 버튼.
+13. 토글/삭제 실패(예: 백엔드 일시 중단) → 컴포넌트 인라인 에러 (error.tsx는 뜨지 않음).
+14. 네트워크 탭에서 클라이언트 → `/api/todos` → 백엔드 흐름 확인.
 
 ### 콘솔 & 정리
 

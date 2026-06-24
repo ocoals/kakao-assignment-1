@@ -11,7 +11,7 @@ Next.js 프론트엔드와 FastAPI 백엔드로 구성된 할 일 관리 웹 앱
 - **필터+검색+날짜 동시 적용** — `?date=2026-06-24&filter=active&search=키워드` AND 결합, 교집합 결과
 - **검색 디바운스** — 입력 후 약 300ms 정지 시점에 1회 갱신
 - **URL 파라미터 유지** — 새로고침/공유 후에도 날짜·필터·검색 상태 복구
-- **인라인 추가 폼** — 목록 화면에서 바로 추가 (제출 후 페이지 이동 없음) + 별도 `/todos/new` 페이지 병행
+- **인라인 추가 폼** — 목록 화면에서 바로 추가 (제출 후 페이지 이동 없음, 유일한 추가 경로)
 - **할 일 항목 토글** — 체크박스로 완료/취소
 
 ## 기술 스택
@@ -168,13 +168,13 @@ todo-vanilla/
 │   │   │   │
 │   │   │   ├── _components/
 │   │   │   │   ├── TodoItem.tsx       # 목록 항목 (체크박스 토글/삭제)
-│   │   │   │   ├── WeekStrip.tsx      # 주간 날짜 바 (Client, 날짜 선택, 이전·다음 주)
-│   │   │   │   ├── TodoForm.tsx       # 추가 폼(공용) (Client, redirectToList prop으로 분기)
-│   │   │   │   ├── FilterTabs.tsx     # 필터 탭
-│   │   │   │   └── SearchBox.tsx      # 검색창
+│   │   │   │   ├── WeekStrip.tsx      # 주간 날짜 바 (Client, 날짜 선택, 이전·다음 주, useSetParam 사용)
+│   │   │   │   ├── TodoForm.tsx       # 인라인 추가 폼 (Client)
+│   │   │   │   ├── FilterTabs.tsx     # 필터 탭 (useSetParam 사용)
+│   │   │   │   └── SearchBox.tsx      # 검색창 (useSetParam 사용)
 │   │   │   │
-│   │   │   ├── new/
-│   │   │   │   └── page.tsx           # 생성 페이지
+│   │   │   ├── _hooks/
+│   │   │   │   └── useSetParam.ts     # URL 파라미터 갱신 훅 (키 하나만 set/delete → router.push)
 │   │   │   │
 │   │   │   └── [todoId]/
 │   │   │       ├── page.tsx           # 수정 페이지
@@ -212,11 +212,9 @@ todo-vanilla/
 - **기본값:** page.tsx에서 ?date= 없으면 formatDateKey(new Date()) (오늘 날짜) 자동 설정.
 - **WeekStrip:** Client 컴포넌트. 주간 7일을 표시, 각 날짜 우측에 할 일 개수 표시, 날짜 선택 시 URL ?date=만 갱신 (filter/search는 보존).
 
-### 추가 폼 (통합)
+### 추가 폼 (인라인 전용)
 
-- **TodoForm.tsx:** Client 컴포넌트, redirectToList prop으로 두 모드 분기.
-  - **인라인 모드** (`redirectToList=false`, 기본값) — 목록 화면 안에서 할 일 추가. 제출 후 입력 필드 비우고 router.refresh()만 (페이지 이동 없음).
-  - **페이지 모드** (`redirectToList=true`) — /todos/new 페이지에서 호출. 제출 후 router.refresh() → router.push("/todos") (페이지로 이동).
+- **TodoForm.tsx:** Client 컴포넌트, 인라인 전용. 목록 화면 안에서 할 일 추가. 제출 후 입력 필드 비우고 `router.refresh()`만 호출 (페이지 이동 없음). "페이지 모드" 개념 없음.
 - **날짜:** 현재 보고 있는 ?date= 파라미터에 추가. ?date= 없으면 오늘.
 
 ### 읽기 = `actions.ts`, 쓰기 = `route.ts`
