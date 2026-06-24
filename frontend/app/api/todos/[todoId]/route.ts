@@ -1,4 +1,4 @@
-// 동적 라우트 쓰기 프록시(PUT/DELETE): 클라이언트 → 이 핸들러 → FastAPI.
+// 쓰기 프록시(PUT/DELETE): 클라이언트 → 이 핸들러 → FastAPI
 import { revalidatePath } from "next/cache";
 
 const BACKEND_URL = process.env.BACKEND_URL;
@@ -7,7 +7,7 @@ export async function PUT(
   request: Request,
   { params }: RouteContext<"/api/todos/[todoId]">,
 ) {
-  const { todoId } = await params; // Next.js 16: params는 Promise → await
+  const { todoId } = await params; // Next 16: Promise라 await
   const body = await request.json();
 
   try {
@@ -43,8 +43,7 @@ export async function DELETE(
 
     revalidatePath("/todos");
 
-    // DELETE 성공은 204(본문 없음) → 본문 없이 상태코드만 전달
-    return new Response(null, { status: res.status });
+    return new Response(null, { status: res.status }); // 204: 본문 없음
   } catch {
     return Response.json(
       { error: "백엔드에 연결할 수 없습니다." },

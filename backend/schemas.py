@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, field_validator
 
 class TodoCreate(BaseModel):
     text: str
-    date: str  # 날짜 문자열(로컬), 시간/타임존 없음. 형식: "YYYY-MM-DD"
+    date: str  # "YYYY-MM-DD"
 
     @field_validator("text")
     @classmethod
@@ -14,7 +14,7 @@ class TodoCreate(BaseModel):
         stripped = v.strip()
         if not stripped:
             raise ValueError("text는 공백만으로 이루어질 수 없습니다.")
-        return stripped  # 앞뒤 공백 제거된 값 저장
+        return stripped
 
 
 class TodoUpdate(BaseModel):
@@ -24,8 +24,8 @@ class TodoUpdate(BaseModel):
     @field_validator("text")
     @classmethod
     def text_not_empty(cls, v: Optional[str]) -> Optional[str]:
-        if v is None:
-            return v  # None은 미변경 → 통과
+        if v is None:  # 미변경
+            return v
         stripped = v.strip()
         if not stripped:
             raise ValueError("text는 공백만으로 이루어질 수 없습니다.")
@@ -36,6 +36,6 @@ class TodoRead(BaseModel):
     id: int
     text: str
     completed: bool
-    date: str  # 날짜 문자열(로컬), 시간/타임존 없음. 형식: "YYYY-MM-DD"
+    date: str  # "YYYY-MM-DD"
 
     model_config = ConfigDict(from_attributes=True)

@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* 2차 과제 디자인 토큰 (보라 테마). Tailwind v4 @theme로 색상 유틸을 생성한다. */
+/* 디자인 토큰 (보라 테마) — Tailwind v4 @theme가 색상 유틸 생성 */
 @theme {
   --color-brand: #672be0;
   --color-brand-hover: #5722c4;
@@ -13,7 +13,6 @@
   --color-danger-soft: #fdeaea;
 }
 
-/* 본문 폰트는 next/font(Geist) 변수 매핑을 유지한다. */
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);

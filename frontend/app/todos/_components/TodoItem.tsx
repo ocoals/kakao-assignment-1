@@ -8,12 +8,10 @@ import type { Todo } from "../types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-// 목록의 할 일 한 건. 완료 토글(체크박스)과 삭제를 처리한다.
 export default function TodoItem({ todo }: { todo: Todo }) {
   const router = useRouter();
   const [error, setError] = useState(false);
 
-  // 완료 상태 토글 → route.ts 프록시로 PUT → 성공 후 router.refresh()
   async function toggle() {
     setError(false);
     try {
@@ -23,13 +21,12 @@ export default function TodoItem({ todo }: { todo: Todo }) {
         body: JSON.stringify({ completed: !todo.completed }),
       });
       if (!res.ok) throw new Error();
-      router.refresh(); // 같은 /todos 페이지이므로 refresh만으로 충분
+      router.refresh();
     } catch {
       setError(true);
     }
   }
 
-  // 삭제 → route.ts 프록시로 DELETE → 성공 후 router.refresh()
   async function remove() {
     setError(false);
     try {

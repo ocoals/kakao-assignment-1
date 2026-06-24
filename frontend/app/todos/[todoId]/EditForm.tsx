@@ -7,7 +7,6 @@ import type { Todo } from "../types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-// 할 일 수정 폼. 기존 text를 prefill하고, 수정 성공 후 그 항목의 날짜 목록으로 돌아간다.
 export default function EditForm({ todo }: { todo: Todo }) {
   const router = useRouter();
   const [text, setText] = useState(todo.text); // prefill
@@ -19,7 +18,6 @@ export default function EditForm({ todo }: { todo: Todo }) {
     setError(false);
     setEmpty(false);
 
-    // 빈/공백 거부 (백엔드도 422로 2차 방어)
     if (!text.trim()) {
       setEmpty(true);
       return;
@@ -29,10 +27,9 @@ export default function EditForm({ todo }: { todo: Todo }) {
       const res = await fetch(`${API_URL}/todos/${todo.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: text.trim() }), // text만 수정(날짜 미수정)
+        body: JSON.stringify({ text: text.trim() }), // text만 수정
       });
       if (!res.ok) throw new Error();
-      // 순서 고정: refresh → 그 항목의 날짜 목록으로 push
       router.refresh();
       router.push(`/todos?date=${todo.date}`);
     } catch {

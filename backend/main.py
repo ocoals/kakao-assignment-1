@@ -9,12 +9,10 @@ from database import Base, SessionLocal, engine
 from models import Todo
 from schemas import TodoCreate, TodoRead, TodoUpdate
 
-# 앱 시작 시 테이블 생성
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Todo API")
 
-# CORS: Next.js 개발 서버 허용
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -42,18 +40,14 @@ def list_todos(
     """할 일 목록 조회. filter(all|active|completed), search(부분 일치), date(YYYY-MM-DD) 적용."""
     query = db.query(Todo)
 
-    # filter 처리: all|active|completed 외 값은 all로 폴백
     if filter == "active":
         query = query.filter(Todo.completed == False)  # noqa: E712
     elif filter == "completed":
         query = query.filter(Todo.completed == True)  # noqa: E712
-    # else: all (기본) — 조건 없음
 
-    # search 처리: 빈 문자열/미지정이면 건너뜀
     if search and search.strip():
         query = query.filter(Todo.text.like(f"%{search.strip()}%"))
 
-    # date 처리: 지정 시 해당 날짜만, 미지정이면 전체
     if date and date.strip():
         query = query.filter(Todo.date == date.strip())
 
