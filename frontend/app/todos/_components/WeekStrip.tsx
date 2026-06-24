@@ -1,7 +1,5 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-
 import type { Todo } from "../types";
 import {
   formatDateKey,
@@ -9,32 +7,26 @@ import {
   getWeekDates,
   addWeeks,
 } from "../date";
+import { useSetParam } from "../_hooks/useSetParam";
 
 const DAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
 
-// 주간 날짜 선택 바 (Client). 선택 날짜는 URL의 ?date= 로 관리한다.
-// - todos: 각 날짜의 할 일 개수 표시용 (날짜 무관 전체 목록)
-// - selectedDate: 현재 선택된 날짜 키("YYYY-MM-DD")
 export default function WeekStrip({
   todos,
   selectedDate,
 }: {
-  todos: Todo[];
+  todos: Todo[]; // 날짜별 개수 표시용 (전체)
   selectedDate: string;
 }) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const setParam = useSetParam();
 
   const selected = parseDateKey(selectedDate);
   const weekDates = getWeekDates(selected);
   const todayKey = formatDateKey(new Date());
   const rangeLabel = `${formatDateKey(weekDates[0])} ~ ${formatDateKey(weekDates[6])}`;
 
-  // 날짜 이동: 기존 쿼리(filter/search)는 보존하고 date만 교체한다.
   function goToDate(key: string) {
-    const params = new URLSearchParams(searchParams);
-    params.set("date", key);
-    router.push(`/todos?${params.toString()}`);
+    setParam("date", key); // filter/search 보존, date만 교체
   }
 
   return (

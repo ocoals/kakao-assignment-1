@@ -1,6 +1,8 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+
+import { useSetParam } from "../_hooks/useSetParam";
 
 const TABS = [
   { value: "all", label: "전체" },
@@ -8,22 +10,13 @@ const TABS = [
   { value: "completed", label: "완료" },
 ] as const;
 
-// 필터 탭. 클릭 시 URL의 filter 파라미터만 변경한다(date·search는 보존).
 export default function FilterTabs() {
-  const router = useRouter();
   const searchParams = useSearchParams();
+  const setParam = useSetParam();
   const current = searchParams.get("filter") ?? "all";
 
   function selectFilter(value: string) {
-    // 기존 쿼리를 복제한 뒤 자기 키(filter)만 변경
-    const params = new URLSearchParams(searchParams);
-    if (value === "all") {
-      params.delete("filter");
-    } else {
-      params.set("filter", value);
-    }
-    const query = params.toString();
-    router.push(`/todos${query ? `?${query}` : ""}`);
+    setParam("filter", value === "all" ? null : value);
   }
 
   return (

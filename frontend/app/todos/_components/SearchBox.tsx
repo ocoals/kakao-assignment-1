@@ -1,26 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
-// 검색창. 입력을 ~300ms 디바운스한 뒤 URL의 search 파라미터만 변경한다(filter 보존).
+import { useSetParam } from "../_hooks/useSetParam";
+
 export default function SearchBox() {
-  const router = useRouter();
   const searchParams = useSearchParams();
+  const setParam = useSetParam();
   const [value, setValue] = useState(searchParams.get("search") ?? "");
 
+  // 입력이 ~300ms 멈춘 뒤 한 번만 URL을 갱신한다 (디바운스)
   useEffect(() => {
-    // 키 입력마다가 아니라, 입력이 ~300ms 멈춘 뒤 한 번만 URL을 갱신한다
     const timer = setTimeout(() => {
-      // 기존 쿼리를 복제한 뒤 자기 키(search)만 변경
-      const params = new URLSearchParams(searchParams);
-      if (value.trim()) {
-        params.set("search", value.trim());
-      } else {
-        params.delete("search"); // 빈 검색은 파라미터 제거
-      }
-      const query = params.toString();
-      router.push(`/todos${query ? `?${query}` : ""}`);
+      setParam("search", value.trim() || null);
     }, 300);
 
     return () => clearTimeout(timer);
