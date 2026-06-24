@@ -7,18 +7,9 @@ import { formatDateKey } from "../date";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-// 할 일 추가 폼 (공용).
-// - redirectToList=false(기본): 인라인 모드 — 제출 후 입력만 비우고 router.refresh()로 그 자리에 머무름.
-// - redirectToList=true: 별도 페이지 모드 — 제출 후 router.refresh() → 목록(/todos)으로 이동.
-// 두 모드의 차이는 "제출 성공 후 동작"뿐이라 prop 하나로 분기한다.
-export default function TodoForm({
-  redirectToList = false,
-}: {
-  redirectToList?: boolean;
-}) {
+export default function TodoForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  // 현재 보고 있는 날짜에 추가한다. ?date= 없으면 오늘.
   const date = searchParams.get("date") ?? formatDateKey(new Date());
 
   const [text, setText] = useState("");
@@ -30,7 +21,6 @@ export default function TodoForm({
     setError(false);
     setEmpty(false);
 
-    // 클라이언트 1차 방어: 빈/공백 거부 (백엔드도 422로 2차 방어)
     if (!text.trim()) {
       setEmpty(true);
       return;
@@ -44,12 +34,8 @@ export default function TodoForm({
       });
       if (!res.ok) throw new Error();
 
-      router.refresh(); // 서버 데이터 무효화 → 목록 재렌더
-      if (redirectToList) {
-        router.push(`/todos?date=${date}`); // 페이지 모드: 그 날짜 목록으로 이동
-      } else {
-        setText(""); // 인라인 모드: 입력만 비우고 머무름
-      }
+      router.refresh();
+      setText("");
     } catch {
       setError(true);
     }
