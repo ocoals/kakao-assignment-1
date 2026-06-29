@@ -22,16 +22,17 @@ Next.js 16 App Router 프론트엔드와 FastAPI 백엔드로 구성된 할 일 
 | **backend/main.py** | FastAPI 앱. CRUD 엔드포인트 4개(GET/POST/PUT/DELETE /todos), 날짜·필터·검색 로직, CORS 미들웨어. |
 | **backend/database.py** | SQLAlchemy 엔진/세션/Base. `.env.local`에서 DATABASE_URL 읽음. |
 | **backend/models.py** | SQLAlchemy 모델 `Todo(id: int PK, text: str, completed: bool, date: str)`. date는 "YYYY-MM-DD" 로컬 문자열. |
-| **backend/schemas.py** | Pydantic v2 스키마. `TodoCreate(text, date)` 공백 검증, `TodoUpdate`(Optional 필드), `TodoRead`. |
+| **backend/schemas.py** | Pydantic v2 스키마. `TodoCreate(text, date)`/`TodoUpdate`(Optional 필드)/`TodoRead`. 공용 `_clean_text`로 text 공백·200자(MAX_TEXT) 검증, date `YYYY-MM-DD` 정규식 검증 → 위반 시 422. |
 | **frontend/app/todos/page.tsx** | 할 일 목록 Server Component. searchParams(date/filter/search) await → getTodos() → 필터 결과 렌더. WeekStrip + TodoForm(인라인) 포함. |
 | **frontend/app/todos/actions.ts** | 읽기 헬퍼. `getTodos(date, filter, search)`: BACKEND_URL로 FastAPI 직접 호출, cache: no-store. "use server" 붙이지 않음 (Server Action 아님). |
 | **frontend/app/todos/date.ts** | 날짜 유틸 (순수 함수). formatDateKey(Date→"YYYY-MM-DD"), parseDateKey("YYYY-MM-DD"→Date), getWeekDates(Date→[Mon~Sun]), addWeeks(Date, n→Date±n주). |
 | **frontend/app/todos/_components/WeekStrip.tsx** | Client. 주간 날짜 바. 현재 주 7일, 각 날짜 우측에 할 일 개수, 이전·다음 주 버튼. 날짜 선택 시 useSetParam으로 URL ?date= 갱신 (filter/search 보존). useRouter/useSearchParams 직접 import 안 함. |
-| **frontend/app/todos/_components/TodoForm.tsx** | Client. 인라인 추가 폼 전용. 제출 후 입력 필드 비우고 router.refresh()만 호출 (페이지 이동 없음). 현재 ?date=에 추가 (없으면 오늘). |
+| **frontend/app/todos/_components/TodoForm.tsx** | Client. 인라인 추가 폼 전용. `todoApi.create`로 생성, 제출 후 입력 필드 비우고 router.refresh()만 호출 (페이지 이동 없음). 현재 ?date=에 추가 (없으면 오늘). 제출 전 빈값/200자 검증 → 친절 문구. |
 | **frontend/app/api/todos/route.ts** | POST 프록시. 클라 → 이 핸들러 → FastAPI POST. 성공 후 revalidatePath("/todos"). |
 | **frontend/app/api/todos/[todoId]/route.ts** | PUT/DELETE 프록시. 동적 세그먼트 [todoId]. `const { todoId } = await params` (Promise await). 성공 후 revalidatePath. |
-| **frontend/app/todos/_components/TodoItem.tsx** | Client. 체크박스 토글/삭제. 성공 후 router.refresh() (이미 /todos에 머무름). 실패는 try/catch + 인라인 UI. |
-| **frontend/app/todos/[todoId]/EditForm.tsx** | Client. 수정 폼. 성공 후 router.refresh() → router.push("/todos"). |
+| **frontend/app/todos/_components/TodoItem.tsx** | Client. 체크박스 토글/삭제. `todoApi.update`/`todoApi.remove` 사용. 성공 후 router.refresh() (이미 /todos에 머무름). 실패는 try/catch + 인라인 UI. |
+| **frontend/app/todos/[todoId]/EditForm.tsx** | Client. 수정 폼. `todoApi.update(text)` 사용. 제출 전 빈값/200자 검증. 성공 후 router.refresh() → router.push("/todos?date=..."). |
+| **frontend/app/todos/_lib/api.ts** | Client 쓰기 추상화. 공용 `request()`(헤더·JSON.stringify·!res.ok·204 처리) + `todoApi.create/update/remove`. 실패 시 `ApiError(status)` throw. 클라가 fetch를 직접 쓰지 않게 일원화 → 라이브러리/헤더 변경 시 단일 수정 지점. |
 | **frontend/app/todos/_components/FilterTabs.tsx** | Client. 필터 탭. useSetParam으로 filter key만 set/delete → router.push (date/search 파라미터 보존). |
 | **frontend/app/todos/_components/SearchBox.tsx** | Client. 검색창. ~300ms 디바운스, useSetParam으로 search key만 set/delete. 빈 입력 시 delete (date/filter 보존). |
 | **frontend/app/todos/_hooks/useSetParam.ts** | Client 훅. 현재 쿼리 복제 → 키 하나만 set/delete → router.push('/todos?...'). FilterTabs/SearchBox/WeekStrip이 공통 사용. |
@@ -51,17 +52,18 @@ Next.js 16 App Router 프론트엔드와 FastAPI 백엔드로 구성된 할 일 
 
 **Client Component ("use client"):**
 - `app/todos/_components/WeekStrip.tsx` — 주간 날짜 바. useSetParam 훅 사용. 날짜 선택 시 date key만 set (filter/search 보존). useRouter/useSearchParams를 직접 import하지 않음.
-- `app/todos/_components/TodoForm.tsx` — 인라인 추가 폼 전용. useRouter + useSearchParams. 제출 후 입력 필드 비우고 router.refresh()만 (페이지 이동 없음). 현재 ?date= 읽어 추가 (없으면 오늘).
-- `app/todos/_components/TodoItem.tsx` — 토글/삭제. `NEXT_PUBLIC_API_URL`로 route handler 호출. 성공 후 `router.refresh()`. 실패는 try/catch + 인라인 에러 (항목 하단에 "저장에 실패했습니다. 다시 시도하세요.").
-- `app/todos/[todoId]/EditForm.tsx` — 수정 폼. Client. `NEXT_PUBLIC_API_URL`로 PUT. 성공 후 `router.refresh()` 다음 `router.push("/todos")` (순서 고정).
+- `app/todos/_components/TodoForm.tsx` — 인라인 추가 폼 전용. useRouter + useSearchParams. `todoApi.create`로 생성, 제출 후 입력 필드 비우고 router.refresh()만 (페이지 이동 없음). 현재 ?date= 읽어 추가 (없으면 오늘). 빈값/200자 검증 후 친절 문구.
+- `app/todos/_components/TodoItem.tsx` — 토글/삭제. `todoApi.update`/`todoApi.remove` 호출. 성공 후 `router.refresh()`. 실패는 try/catch + 인라인 에러 (항목 하단에 "저장에 실패했습니다. 다시 시도하세요.").
+- `app/todos/[todoId]/EditForm.tsx` — 수정 폼. Client. `todoApi.update(id, {text})`. 제출 전 빈값/200자 검증. 성공 후 `router.refresh()` 다음 `router.push("/todos?date=...")` (순서 고정).
 - `app/todos/_components/FilterTabs.tsx`, `app/todos/_components/SearchBox.tsx` — 필터/검색 UI. useSetParam 훅 사용 (Suspense로 감싼 후 포함). 자신의 키만 수정 (date·상대 파라미터 보존). router.push(`/todos?...`).
 - `app/todos/_hooks/useSetParam.ts` — URL 파라미터 갱신 훅. 현재 쿼리 복제 → 키 하나만 set/delete → router.push. WeekStrip/FilterTabs/SearchBox 공통 사용.
+- `app/todos/_lib/api.ts` — 클라 쓰기 추상화. `todoApi`(create/update/remove) + 공용 `request()` + `ApiError`. 모든 클라 쓰기가 여기를 경유 (raw fetch 직접 사용 안 함).
 
 ### 환경변수 사용처
 
 | 변수 | 접두사 | 사용처 | 용도 |
 |------|--------|---------|------|
-| `NEXT_PUBLIC_API_URL` | `NEXT_PUBLIC_` | Client (TodoItem, TodoForm, EditForm, FilterTabs, SearchBox) — TodoForm은 인라인 추가 폼 | 클라이언트 fetch의 베이스 URL. `${NEXT_PUBLIC_API_URL}/todos`로 route handler 호출. 브라우저에 노출됨. |
+| `NEXT_PUBLIC_API_URL` | `NEXT_PUBLIC_` | Client — 쓰기는 `_lib/api.ts`(todoApi)가 사용 | 클라이언트 fetch의 베이스 URL. `_lib/api.ts`의 `request()`가 `${NEXT_PUBLIC_API_URL}/todos`로 route handler 호출. 브라우저에 노출됨. |
 | `BACKEND_URL` | 없음 | Server (actions.ts, route.ts) | actions.ts의 getTodos() + route handler가 FastAPI를 호출할 때의 베이스 URL. 브라우저에 노출 안 됨. |
 | `DATABASE_URL` | 없음 | Backend 서버 (database.py) | SQLAlchemy 엔진의 DB 연결 문자열. |
 
@@ -256,12 +258,17 @@ curl -X DELETE http://localhost:8000/todos/1
 # → 204 (No Content)
 ```
 
-**공백 검증:**
+**유효성 검사 (안전망):**
 ```bash
+# 공백 전용 text → 422
 curl -X POST http://localhost:8000/todos \
-  -d '{"text": "   "}'
-# → 422 Unprocessable Entity (공백 전용 텍스트 거부)
+  -H "Content-Type: application/json" -d '{"text": "   ", "date": "2026-06-29"}'
+# 200자 초과 text → 422 ("text는 200자 이내여야 합니다.")
+# 잘못된 date 형식 → 422 ("date는 YYYY-MM-DD 형식이어야 합니다.")
+curl -X POST http://localhost:8000/todos \
+  -H "Content-Type: application/json" -d '{"text": "ok", "date": "바나나"}'
 ```
+> 프론트는 빈값/200자를 제출 전 자체 검증해 친절 문구로 막으므로, 위 422는 정상 UI로는 도달하지 않는 백엔드 안전망. 사용자 화면에는 422·raw 메시지를 노출하지 않는다.
 
 ## Testing Requirements
 
@@ -272,7 +279,8 @@ curl -X POST http://localhost:8000/todos \
 3. POST로 할 일 2~3개 생성 (date 필수) → GET으로 전체 확인 (길이 증가).
 4. **날짜별 필터:** GET `?date=2026-06-24` → 해당 날짜 항목만.
 5. **공백 text POST** → 422, DB 행 미생성.
-6. **date 없이 POST** → 422, DB 행 미생성.
+6. **date 없이 POST / 잘못된 date 형식("바나나", "2026-6-9")** → 422, DB 행 미생성.
+6-1. **200자 초과 text POST** → 422; 정확히 200자는 통과.
 7. **GET `?filter=active`** → completed=false만.
 8. **GET `?date=2026-06-24&filter=active&search=<텍스트>`** → 3개 조건 AND (날짜 AND 진행중 AND 텍스트 포함).
 9. **PUT `{}`** (빈 body) → 200, 무변경.
@@ -294,6 +302,8 @@ curl -X POST http://localhost:8000/todos \
 12. 백엔드 중단 → `/todos` 재접속, `error.tsx` 폴백 + reset 버튼.
 13. 토글/삭제 실패(예: 백엔드 일시 중단) → 컴포넌트 인라인 에러 (error.tsx는 뜨지 않음).
 14. 네트워크 탭에서 클라이언트 → `/api/todos` → 백엔드 흐름 확인.
+15. **유효성(프론트):** 빈값 추가/수정 → "할 일을 입력해 주세요." (서버 왕복 없음). 200자 초과 → "할 일은 200자 이내로 입력해 주세요.".
+16. **시스템 오류 문구:** 백엔드 중단 상태로 추가 시도 → 프록시가 502 반환(Network 탭), 화면에는 "잠시 후 다시 시도해 주세요."만 표시(422·raw 메시지·스택 노출 0).
 
 ### 콘솔 & 정리
 

@@ -12,7 +12,7 @@
 ```typescript
 type Todo = {
   id: number;           // SQLite 자동증가 정수 (UUID 아님)
-  text: string;         // 공백만 거부
+  text: string;         // 공백·200자 초과 거부
   completed: boolean;
   date: string;         // "YYYY-MM-DD" 로컬 문자열 (날짜별 관리)
 }
@@ -53,7 +53,7 @@ Server Component → actions.ts (getTodos)
 
 **쓰기:**
 ```
-Client Component → fetch(NEXT_PUBLIC_API_URL)
+Client Component → todoApi (_lib/api.ts) → fetch(NEXT_PUBLIC_API_URL)
                  ↓
             Next.js route handler
                  ↓ fetch(BACKEND_URL)
@@ -119,6 +119,8 @@ deep-interview + 합의(consensus) 과정에서 확정한 핵심 결정과 **기
 - [x] 4개 엔드포인트(GET/POST/PUT/DELETE `/todos`) 노출 및 동작.
 - [x] POST 공백 text → 422 거부.
 - [x] PUT 공백 text → 422 거부.
+- [x] text 200자 초과 → 422 (200자 경계는 통과).
+- [x] date 형식 오류(비-`YYYY-MM-DD`) → 422.
 - [x] PUT `{}` (빈 body) → 200, 무변경.
 - [x] `?date=YYYY-MM-DD` → 해당 날짜 항목만. POST 본문 `{text, date}`.
 - [x] `?filter=active|completed` → 필터링.
@@ -143,7 +145,9 @@ deep-interview + 합의(consensus) 과정에서 확정한 핵심 결정과 **기
 - [x] loading.tsx 존재 + 렌더 정상.
 - [x] error.tsx: 서버 렌더 에러 폴백. 쓰기 실패는 인라인 UI.
 - [x] 항목 0개 → "할 일이 없습니다" 문구.
-- [x] 빈/공백 입력 → 클라이언트 거부 + 백엔드 422 (이중 방어).
+- [x] 빈/공백·200자 초과 입력 → 클라이언트 친절 문구로 거부 + 백엔드 422 (이중 방어).
+- [x] 시스템 오류(백엔드 다운 등) → "잠시 후 다시 시도해 주세요." (422·raw 메시지 비노출).
+- [x] 클라 쓰기는 `_lib/api.ts`의 `todoApi` 경유 (컴포넌트에 raw fetch 0건).
 
 ## 핵심 파일
 
@@ -151,10 +155,11 @@ deep-interview + 합의(consensus) 과정에서 확정한 핵심 결정과 **기
 |------|------|
 | `backend/main.py` | CRUD 엔드포인트 + 필터/검색 로직 + CORS |
 | `backend/models.py` | Todo ORM 모델 |
-| `backend/schemas.py` | Pydantic 검증 (공백 text 거부) |
+| `backend/schemas.py` | Pydantic 검증 (text 공백·200자, date YYYY-MM-DD 형식) |
 | `backend/database.py` | SQLAlchemy 설정 |
 | `frontend/app/todos/page.tsx` | 목록 Server Component (날짜/필터/검색 + WeekStrip + 인라인 폼) |
 | `frontend/app/todos/actions.ts` | 읽기 헬퍼 `getTodos(date, filter, search)` (no-store) |
+| `frontend/app/todos/_lib/api.ts` | 클라 쓰기 추상화 `todoApi`(create/update/remove) + `ApiError` |
 | `frontend/app/todos/date.ts` | 날짜 유틸 순수함수 (formatDateKey/parseDateKey/getWeekDates/addWeeks) |
 | `frontend/app/api/todos/route.ts` | POST 프록시 |
 | `frontend/app/api/todos/[todoId]/route.ts` | PUT/DELETE 프록시 |

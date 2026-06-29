@@ -83,8 +83,8 @@ SQLite DB (날짜·필터·검색 모두 AND 적용)
 ### 쓰기 (생성/수정/삭제)
 
 ```
-Client Component (TodoItem/TodoForm)
-    ↓ fetch() [NEXT_PUBLIC_API_URL/todos*]
+Client Component (TodoItem/TodoForm/EditForm)
+    ↓ todoApi (_lib/api.ts) → fetch() [NEXT_PUBLIC_API_URL/todos*]
     ↓
 Next.js Route Handler (app/api/todos/route.ts 또는 [todoId]/route.ts)
     ↓ fetch() [BACKEND_URL/todos*]
@@ -137,7 +137,7 @@ DATABASE_URL=sqlite:///./todos.db
 - `200` — 조회/수정/삭제 성공
 - `204` — 삭제 성공 (본문 없음)
 - `404` — 없는 ID
-- `422` — 검증 실패 (공백 텍스트 등)
+- `422` — 검증 실패 (공백 텍스트, text 200자 초과, date 형식 오류)
 
 ## 프로젝트 구조
 
@@ -177,6 +177,9 @@ todo-vanilla/
 │   │   │   ├── _hooks/
 │   │   │   │   └── useSetParam.ts     # URL 파라미터 갱신 훅 (키 하나만 set/delete → router.push)
 │   │   │   │
+│   │   │   ├── _lib/
+│   │   │   │   └── api.ts             # 클라 쓰기 fetch 일원화 (todoApi.create/update/remove + ApiError)
+│   │   │   │
 │   │   │   └── [todoId]/
 │   │   │       ├── page.tsx           # 수정 페이지
 │   │   │       └── EditForm.tsx       # 수정 폼
@@ -197,7 +200,7 @@ todo-vanilla/
 │   ├── main.py                  # FastAPI 앱 + CRUD 엔드포인트 (GET/POST/PUT/DELETE /todos, 날짜·필터·검색 처리)
 │   ├── database.py              # SQLAlchemy 엔진/세션/Base
 │   ├── models.py                # Todo ORM 모델 (id, text, completed, date)
-│   └── schemas.py               # Pydantic 스키마 (TodoCreate(text, date)/TodoUpdate/TodoRead)
+│   └── schemas.py               # Pydantic 스키마 (TodoCreate/TodoUpdate/TodoRead). text 공백·200자 검증, date YYYY-MM-DD 형식 검증
 │
 └── docs/
     └── PLAN.md                  # 과제3 구현 계획
@@ -221,9 +224,20 @@ todo-vanilla/
 ### 읽기 = `actions.ts`, 쓰기 = `route.ts`
 
 - **읽기 (`getTodos`)** — Server Component에서 직접 호출하는 순수 fetch 헬퍼. 매번 최신 데이터를 가져옴 (no-store).
-- **쓰기** — 클라이언트 컴포넌트에서 HTTP 요청 → Next.js route handler → FastAPI. Route handler는 `revalidatePath("/todos")`를 호출해 캐시 무효화.
+- **쓰기** — 클라이언트 컴포넌트에서 `_lib/api.ts`의 `todoApi`(create/update/remove)를 통해 요청 → Next.js route handler → FastAPI. Route handler는 `revalidatePath("/todos")`를 호출해 캐시 무효화.
 
 이 두 패턴의 분리로 서버/클라이언트 경계가 명확해지고, 캐싱·갱신 로직이 구조화됩니다.
+
+### 클라이언트 쓰기 추상화 (`todoApi`)
+
+- 클라 컴포넌트(TodoForm/EditForm/TodoItem)는 `fetch`를 직접 쓰지 않고 `_lib/api.ts`의 `todoApi`만 호출. 공용 `request()`가 헤더·`JSON.stringify`·`!res.ok` 처리·204 응답을 한곳에서 담당 → 라이브러리 교체나 헤더 변경 시 이 파일만 수정.
+- 실패 시 `ApiError(status)`를 던져, 호출부는 상태코드로 종류를 구분할 수 있음.
+
+### 유효성 검사 (이중 방어)
+
+- **프론트(즉시 피드백)** — 제출 전 케이스별로 검사해 사용자 친화 문구를 직접 소유: 빈값 → "할 일을 입력해 주세요.", 200자 초과 → "할 일은 200자 이내로 입력해 주세요." (서버 왕복 없음).
+- **백엔드(안전망)** — `schemas.py`가 text 공백·200자, date `YYYY-MM-DD` 형식을 검증(422). 잘못된 직접 요청을 막는 최종 방어선.
+- **시스템 오류** — 네트워크/서버 오류(예: 백엔드 다운 시 프록시 502)는 raw 메시지·상태코드를 노출하지 않고 "잠시 후 다시 시도해 주세요." 같은 두루뭉술 문구로 표시.
 
 ### UI 갱신 메커니즘
 
