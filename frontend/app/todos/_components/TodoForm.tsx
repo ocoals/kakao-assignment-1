@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { formatDateKey } from "../date";
+import { todoApi } from "../_lib/api";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const MAX_TEXT = 200; // 백엔드 검증과 같은 값 유지
 
 export default function TodoForm() {
   const router = useRouter();
@@ -13,31 +14,28 @@ export default function TodoForm() {
   const date = searchParams.get("date") ?? formatDateKey(new Date());
 
   const [text, setText] = useState("");
-  const [error, setError] = useState(false);
-  const [empty, setEmpty] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(false);
-    setEmpty(false);
 
-    if (!text.trim()) {
-      setEmpty(true);
+    const trimmed = text.trim();
+    if (!trimmed) {
+      setError("할 일을 입력해 주세요.");
       return;
     }
+    if (trimmed.length > MAX_TEXT) {
+      setError(`할 일은 ${MAX_TEXT}자 이내로 입력해 주세요.`);
+      return;
+    }
+    setError(null);
 
     try {
-      const res = await fetch(`${API_URL}/todos`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: text.trim(), date }),
-      });
-      if (!res.ok) throw new Error();
-
+      await todoApi.create(trimmed, date);
       router.refresh();
       setText("");
     } catch {
-      setError(true);
+      setError("잠시 후 다시 시도해 주세요.");
     }
   }
 
@@ -59,12 +57,7 @@ export default function TodoForm() {
           추가
         </button>
       </div>
-      {empty && <p className="mt-2.5 text-[13px] text-brand">할 일을 입력해 주세요.</p>}
-      {error && (
-        <p className="mt-2.5 text-[13px] text-danger">
-          저장에 실패했습니다. 다시 시도하세요.
-        </p>
-      )}
+      {error && <p className="mt-2.5 text-[13px] text-danger">{error}</p>}
     </form>
   );
 }

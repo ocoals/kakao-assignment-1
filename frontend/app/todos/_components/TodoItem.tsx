@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 import type { Todo } from "../types";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+import { todoApi } from "../_lib/api";
 
 export default function TodoItem({ todo }: { todo: Todo }) {
   const router = useRouter();
@@ -15,12 +14,7 @@ export default function TodoItem({ todo }: { todo: Todo }) {
   async function toggle() {
     setError(false);
     try {
-      const res = await fetch(`${API_URL}/todos/${todo.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ completed: !todo.completed }),
-      });
-      if (!res.ok) throw new Error();
+      await todoApi.update(todo.id, { completed: !todo.completed });
       router.refresh();
     } catch {
       setError(true);
@@ -30,10 +24,7 @@ export default function TodoItem({ todo }: { todo: Todo }) {
   async function remove() {
     setError(false);
     try {
-      const res = await fetch(`${API_URL}/todos/${todo.id}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error();
+      await todoApi.remove(todo.id);
       router.refresh();
     } catch {
       setError(true);
